@@ -18,7 +18,7 @@
 <link href="assets/app-689aa9b0c7.css" rel="stylesheet"/>
 </head>
 <body>
-<div class="mobile-topbar"><div class="mobile-brand"><div aria-label="Аватар" class="mobile-avatar"><img alt="Аватар" src="assets/avatar-2fc3a937.jpg" width="320" height="320" decoding="async"/></div><span>Медкалькуляторы</span></div><div class="mobile-actions"><button aria-controls="mobileSearchPanel" aria-expanded="false" aria-label="Поиск калькулятора" class="icon-button mobile-search-button" id="mobileSearchToggle" type="button"><svg aria-hidden="true" viewbox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"></circle><path d="M15.5 15.5 21 21"></path></svg></button><button aria-label="Очистить всё" class="icon-button mobile-reset-button" id="mobileReset" type="button">↺</button><button aria-label="Переключить тему" class="icon-button theme-toggle" type="button">◐</button></div></div><div class="mobile-search-panel" hidden="" id="mobileSearchPanel"><div class="mobile-search-inner"><span class="mobile-search-glyph"><svg aria-hidden="true" viewbox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"></circle><path d="M15.5 15.5 21 21"></path></svg></span><input aria-autocomplete="list" aria-controls="mobileSearchSuggestions" aria-expanded="false" aria-label="Поиск калькулятора" autocomplete="off" id="mobileCalculatorSearch" role="combobox" placeholder="Найти калькулятор" type="search"/><button aria-label="Закрыть поиск" class="mobile-search-close" id="mobileSearchClose" type="button">×</button></div><div class="mobile-search-hint">Начни вводить название, симптом, показатель или аббревиатуру.</div><div aria-label="Подходящие калькуляторы и опросники" class="mobile-search-suggestions" hidden="" id="mobileSearchSuggestions" role="listbox"></div></div>
+<div class="mobile-topbar"><div class="mobile-brand"><div aria-label="Аватар" class="mobile-avatar"><img alt="Аватар" src="assets/avatar-2fc3a937.jpg" width="320" height="320" decoding="async"/></div><span>Медкалькуляторы</span></div><div class="mobile-actions"><button aria-controls="mobileSearchPanel" aria-expanded="false" aria-label="Поиск калькулятора" class="icon-button mobile-search-button" id="mobileSearchToggle" type="button"><svg aria-hidden="true" viewbox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"></circle><path d="M15.5 15.5 21 21"></path></svg></button><button aria-label="Переключить тему" class="icon-button theme-toggle" type="button">◐</button></div></div><div class="mobile-search-panel" hidden="" id="mobileSearchPanel"><div class="mobile-search-inner"><span class="mobile-search-glyph"><svg aria-hidden="true" viewbox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"></circle><path d="M15.5 15.5 21 21"></path></svg></span><input aria-autocomplete="list" aria-controls="mobileSearchSuggestions" aria-expanded="false" aria-label="Поиск калькулятора" autocomplete="off" id="mobileCalculatorSearch" role="combobox" placeholder="Найти калькулятор" type="search"/><button aria-label="Закрыть поиск" class="mobile-search-close" id="mobileSearchClose" type="button">×</button></div><div class="mobile-search-hint">Начните вводить название или показатель.</div><div aria-label="Подходящие калькуляторы и опросники" class="mobile-search-suggestions" hidden="" id="mobileSearchSuggestions" role="listbox"></div></div>
 <div class="app-shell">
 <div class="app">
 <aside class="sidebar">
@@ -26,13 +26,9 @@
 <div aria-hidden="true" class="brand-logo"></div>
 <div>
 <strong>Медкалькуляторы</strong>
-<small>reference style · v3.4</small>
+<small>Клинические расчёты · v3.5</small>
 </div>
 </div>
-<button class="new-calc" id="newCalcButton" type="button">
-<span class="plus-bubble">+</span>
-<span>Новый расчёт</span>
-</button>
 <div class="search-wrap">
 <input aria-label="Поиск калькулятора" autocomplete="off" class="search" id="calculatorSearch" placeholder="Поиск калькулятора" type="search"/>
 </div>
@@ -144,19 +140,13 @@
 <div class="sidebar-footer">
 <button class="utility-button theme-toggle" type="button">☀︎  Сменить тему</button>
 <button class="utility-button" id="resetAll" type="button">↺  Очистить всё</button>
-<div class="privacy">Данные не сохраняются и никуда не отправляются.</div>
 </div>
 </aside>
 <main class="content">
 <section class="hero">
 <div class="hero-copy">
-<h1>Быстрые медицинские расчёты без лишнего шума</h1>
-<div class="hero-badges">
-<span class="badge">28 инструментов</span>
-<span class="badge">Без сервера</span>
-<span class="badge">Телефон и компьютер</span>
-<span class="badge">Данные не сохраняются</span>
-</div>
+<h1>Выберите расчёт</h1>
+<p>Поиск по названию или клиническому разделу.</p>
 </div>
 <div aria-hidden="true" class="hero-art">
 <div class="floating-calc hybrid-orb"></div>
@@ -1980,8 +1970,10 @@
 </section></div></section></div>
 <div class="empty-search" hidden="" id="emptySearch">По этому запросу калькуляторы не найдены.</div>
 <footer class="footer">
-<strong>Важно:</strong> приложение помогает выполнять математические расчёты, но не заменяет клиническое решение. Перед использованием результата проверь исходные данные, единицы измерения и применимость формулы.
-          <ul class="source-list">
+<strong>Важно:</strong> проверьте исходные данные, единицы измерения и применимость формулы. Приложение не заменяет клиническое решение.
+<details class="source-details">
+<summary>Источники и ограничения</summary>
+<ul class="source-list">
 <li>CKD-EPI 2021: формула расчётной СКФ для взрослых.</li>
 <li>Категории СКФ: KDIGO.</li>
 <li>Категории ИМТ: стандартная классификация для взрослых.</li>
@@ -2001,7 +1993,8 @@
 <li>QTc: Bazett, Fridericia, Framingham и Hodges.</li>
 <li>Электролиты и КЩС: расчётные формулы с указанием ограничений.</li>
 <li>GRACE ACS: классическая балльная стратификация риска.</li><li>HAS-BLED: факторы риска кровотечения при ФП.</li><li>DLCN: критерии вероятности семейной гиперхолестеринемии.</li><li>PRECISE-DAPT: опубликованная пятифакторная модель.</li><li>FRAX: расчёт вероятности выполняется на официальном country-specific сайте.</li><li>СКФ с цистатином C: CKD-EPI cystatin C 2012 и CKD-EPI creatinine–cystatin C 2021.</li></ul>
-</footer><section aria-label="Сообщить об ошибке" class="feedback-block"><div class="feedback-icon">!</div><div class="feedback-copy"><strong>Нашли ошибку?</strong><p>Если вы заметили ошибку, пожалуйста, сообщите о ней созидателю сего в Telegram — <a href="https://t.me/NikorosBelg" rel="noopener noreferrer" target="_blank">@NikorosBelg</a> — или на почту (ну вдруг): <a href="mailto:g.sorokin.chaika@gmail.com">g.sorokin.chaika@gmail.com</a>.</p></div></section>
+</details>
+</footer><section aria-label="Сообщить об ошибке" class="feedback-block"><div class="feedback-icon">!</div><div class="feedback-copy"><strong>Нашли ошибку?</strong><p>Напишите в Telegram <a href="https://t.me/NikorosBelg" rel="noopener noreferrer" target="_blank">@NikorosBelg</a> или на почту <a href="mailto:g.sorokin.chaika@gmail.com">g.sorokin.chaika@gmail.com</a>.</p></div></section>
 </main>
 </div>
 </div>

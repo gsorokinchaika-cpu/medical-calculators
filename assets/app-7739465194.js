@@ -2014,9 +2014,7 @@
       });
     }
 
-    document.getElementById("resetAll").addEventListener("click", resetAll);
-    document.getElementById("mobileReset").addEventListener("click", resetAll);
-    document.getElementById("newCalcButton").addEventListener("click", resetAll);
+    document.getElementById("resetAll")?.addEventListener("click", resetAll);
 
     function safeStorageGet(key) {
       try { return window.localStorage.getItem(key); }
