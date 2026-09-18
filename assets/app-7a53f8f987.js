@@ -1,10 +1,10 @@
 "use strict";
-// v3.6: проверенные расчёты, независимые единицы и быстрый доступ.
+// v3.7: семейство SCORE2, общие данные только в памяти, офлайн-оболочка.
 
     const state = {
       results: {
         bmi: null, egfr: null, egfrcys: null, mentzer: null, tsat: null,
-        score2: null, prevent: null, cadptp: null, dlcn: null, afstroke: null,
+        score2: null, score2op: null, score2diabetes: null, prevent: null, cadptp: null, dlcn: null, afstroke: null,
         hasbled: null, grace: null, precisedapt: null, qtc: null, vte: null,
         pneumonia: null, sorethroat: null, electrolytes: null, fib4: null,
         maf5: null, liverpro: null, adapt: null, stopbang: null, epworth: null,
@@ -68,6 +68,8 @@
         mentzer: "Это ориентир при микроцитозе, а не самостоятельный диагностический тест.",
         tsat: "Интерпретируйте вместе с ферритином, воспалительными маркерами и клиническим контекстом; референсы лабораторий различаются.",
         score2: "Для возраста 40–69 лет при соблюдении условий применимости. С 70 лет используйте SCORE2-OP.",
+        score2op: "Для возраста 70–89 лет без ССЗ, диабета, ХБП и генетических нарушений липидов/АД.",
+        score2diabetes: "СД 2 типа, 40–69 лет, без атеросклеротического ССЗ и тяжёлого поражения органов-мишеней.",
         prevent: "Total CVD включает ASCVD и сердечную недостаточность. Используется базовая модель без дополнительных предикторов.",
         phq9: "Скрининговая шкала не устанавливает диагноз. Положительный ответ на пункт 9 требует отдельной оценки безопасности.",
         gad7: "Скрининговая шкала отражает выраженность симптомов, но не заменяет клиническую диагностику.",
@@ -415,8 +417,8 @@
         if (percent < 20) return ["Высокий риск.", "warning"];
         return ["Очень высокий риск.", "danger"];
       }
-      const low = age < 50 ? 2.5 : 5;
-      const high = age < 50 ? 7.5 : 10;
+      const low = age < 50 ? 2.5 : age < 70 ? 5 : 7.5;
+      const high = age < 50 ? 7.5 : age < 70 ? 10 : 15;
       if (percent < low) return ["Низкий–умеренный риск.", "good"];
       if (percent < high) return ["Высокий риск.", "warning"];
       return ["Очень высокий риск.", "danger"];
@@ -560,6 +562,122 @@
       return true;
     }
 
+    // SCORE2-OP: ehab312, Supplementary Methods Tables 1–3. Table 1
+    // contains the regional calibration used here; the worked examples in
+    // Table 3 contain inconsistent calibration values/signs and are NOT used.
+    const SCORE2_OP_CALIBRATION = {
+      low: { male: [-0.34, 1.19], female: [-0.52, 1.01] },
+      moderate: { male: [0.01, 1.25], female: [-0.10, 1.10] },
+      high: { male: [0.08, 1.15], female: [0.38, 1.09] },
+      veryHigh: { male: [0.05, 0.70], female: [0.38, 0.69] }
+    };
+    // SCORE2-Diabetes: ehad260, Supplementary Table 1 and author Excel.
+    const SCORE2_DIABETES_CALIBRATION = {
+      low: { male: [-0.5699, 0.7476], female: [-0.7380, 0.7019] },
+      moderate: { male: [-0.1565, 0.8009], female: [-0.3143, 0.7701] },
+      high: { male: [0.3207, 0.9360], female: [0.5710, 0.9369] },
+      veryHigh: { male: [0.5836, 0.8294], female: [0.9412, 0.8329] }
+    };
+
+    function calibratedScoreRisk(lp, survival, scales) {
+      // Algebraically equivalent to the published two-stage transformation;
+      // avoids cancellation when 1 - baseRisk is very close to 0 or 1.
+      return -100 * Math.expm1(-Math.exp(scales[0] + scales[1] * (Math.log(-Math.log(survival)) + lp)));
+    }
+
+    function score2OpRisk({ age, sex, smoking, sbp, tc, hdl, region }) {
+      const a = age - 73, s = sbp - 150, t = tc - 6, h = hdl - 1.4;
+      const female = sex === "female";
+      const lp = female
+        ? 0.0789*a + 0.4921*smoking + 0.0102*s + 0.0605*t - 0.3040*h
+          - 0.0255*a*smoking - 0.0004*a*s - 0.0009*a*t + 0.0154*a*h - 0.2290
+        : 0.0634*a + 0.3524*smoking + 0.0094*s + 0.0850*t - 0.3564*h
+          - 0.0247*a*smoking - 0.0005*a*s + 0.0073*a*t + 0.0091*a*h - 0.0929;
+      // Diabetes is zero by the clinical applicability gate (ESC prevention).
+      return calibratedScoreRisk(lp, female ? 0.8082 : 0.7576, SCORE2_OP_CALIBRATION[region][sex]);
+    }
+
+    function hba1cToIfcc(value, unit) {
+      // NGSP master equation: NGSP (%) = 0.09148 * IFCC (mmol/mol) + 2.152.
+      return unit === "percent" ? (value - 2.152) / 0.09148 : value;
+    }
+
+    function score2DiabetesRisk({ age, sex, smoking, sbp, tc, hdl, region, diagnosisAge, hba1c, egfr }) {
+      const a = (age-60)/5, s = (sbp-120)/20, t = tc-6, h = (hdl-1.3)/0.5;
+      const d = (diagnosisAge-50)/5, b = (hba1c-31)/9.34, g = (Math.log(egfr)-4.5)/0.15;
+      const female = sex === "female";
+      const lp = female
+        ? 0.6624*a + 0.6139*smoking + 0.1421*s + 0.8096 + 0.1127*t - 0.1568*h
+          - 0.1122*a*smoking - 0.0167*a*s - 0.1272*a - 0.0200*a*t + 0.0186*a*h
+          - 0.1180*d + 0.1173*b - 0.0640*g + 0.0062*g*g - 0.0196*a*b + 0.0169*a*g
+        : 0.5368*a + 0.4774*smoking + 0.1322*s + 0.6457 + 0.1102*t - 0.1087*h
+          - 0.0672*a*smoking - 0.0268*a*s - 0.0983*a - 0.0181*a*t + 0.0095*a*h
+          - 0.0998*d + 0.0955*b - 0.0591*g + 0.0058*g*g - 0.0134*a*b + 0.0115*a*g;
+      return calibratedScoreRisk(lp, female ? 0.9776 : 0.9605, SCORE2_DIABETES_CALIBRATION[region][sex]);
+    }
+
+    function score2DiabetesCategory(percent) {
+      if (percent < 5) return ["Низкий риск.", "good"];
+      if (percent < 10) return ["Умеренный риск.", "warning"];
+      if (percent < 20) return ["Высокий риск.", "warning"];
+      return ["Очень высокий риск.", "danger"];
+    }
+
+    function calculateExtendedScore2(key) {
+      setError(key, "");
+      const value = suffix => document.getElementById(key + suffix).value;
+      const fail = message => { setError(key, message); return false; };
+      const diabetes = key === "score2diabetes";
+      const name = diabetes ? "SCORE2-Diabetes" : "SCORE2-OP";
+      if (value("Eligibility") !== "eligible") return fail(diabetes
+        ? "Подтвердите СД 2 типа без атеросклеротического ССЗ и тяжёлого поражения органов-мишеней. При этих состояниях риск определяют без SCORE2-Diabetes."
+        : "SCORE2-OP здесь применяется только без ССЗ, диабета, ХБП и генетических нарушений липидов/АД. Подтвердите применимость.");
+      const sex = document.querySelector('input[name="' + key + 'Sex"]:checked')?.value;
+      const smokingValue = document.querySelector('input[name="' + key + 'Smoking"]:checked')?.value;
+      const country = value("Country");
+      const region = country === "manual" ? value("Region") : SCORE2_COUNTRIES[country]?.[1];
+      const age = parseNumber(value("Age")), sbp = parseNumber(value("Sbp"));
+      const tc = cholesterolToMmol(parseNumber(value("Tc")), value("TcUnit"));
+      const hdl = cholesterolToMmol(parseNumber(value("Hdl")), value("HdlUnit"));
+      if (![age, sbp, tc, hdl].every(Number.isFinite) || !["male", "female"].includes(sex) || !["0", "1"].includes(smokingValue) || !SCORE2_REGION_NAMES[region]) {
+        return fail("Укажите возраст, пол, курение, страну, АД, общий холестерин и ЛПВП.");
+      }
+      const minAge = diabetes ? 40 : 70, maxAge = diabetes ? 69 : 89;
+      if (!Number.isInteger(age) || age < minAge || age > maxAge) return fail(name + ": возраст в полных годах от " + minAge + " до " + maxAge + ". Не используйте экстраполяцию за эти пределы.");
+      if (sbp < 80 || sbp > 240 || tc < 2 || tc > 12 || hdl < 0.3 || hdl > 4 || hdl >= tc) return fail("Проверьте АД, показатели холестерина и единицы измерения.");
+      const input = { age, sex, smoking: Number(smokingValue), sbp, tc, hdl, region };
+      let extra = "";
+      if (diabetes) {
+        input.diagnosisAge = parseNumber(value("DiagnosisAge"));
+        input.hba1c = hba1cToIfcc(parseNumber(value("Hba1c")), value("Hba1cUnit"));
+        input.egfr = parseNumber(value("Egfr"));
+        if (!Number.isInteger(input.diagnosisAge) || input.diagnosisAge < 1 || input.diagnosisAge > age) return fail("Введите возраст диагностики СД 2 типа в полных годах: он не может превышать текущий возраст.");
+        if (!Number.isFinite(input.hba1c) || input.hba1c < 15 || input.hba1c > 195) return fail("Проверьте HbA1c и единицы: допустимый ввод 15–195 ммоль/моль (примерно 3,5–20%).");
+        if (!Number.isFinite(input.egfr) || input.egfr <= 0 || input.egfr > 150) return fail("Укажите СКФ CKD-EPI 2009 по креатинину, мл/мин/1,73 м². Допустимый ввод: больше 0 и не выше 150.");
+        if (input.egfr < 45) return fail("СКФ <45 мл/мин/1,73 м² — тяжёлое поражение органов-мишеней по ESC 2023. Категорию риска определяют без SCORE2-Diabetes.");
+        const uacr = value("UacrCategory");
+        if (!["a1", "a2", "a3"].includes(uacr)) return fail("Укажите категорию альбуминурии: без неё нельзя исключить тяжёлое поражение почек.");
+        if (uacr === "a3" || (input.egfr < 60 && uacr === "a2")) return fail("Указанные СКФ и альбуминурия соответствуют тяжёлому поражению органов-мишеней по ESC 2023. SCORE2-Diabetes не применяется.");
+        extra = " Диагноз СД2 в " + input.diagnosisAge + " лет; HbA1c " + formatNumber(input.hba1c, 1) + " ммоль/моль; СКФ CKD-EPI 2009 " + formatNumber(input.egfr, 1) + " мл/мин/1,73 м²; альбуминурия " + uacr.toUpperCase() + ".";
+      }
+      const percent = diabetes ? score2DiabetesRisk(input) : score2OpRisk(input);
+      if (!Number.isFinite(percent) || percent < 0 || percent > 100) return fail("Расчёт недоступен: проверьте исходные данные.");
+      const guideline = diabetes ? "diabetes2023" : value("Guideline");
+      const [category, tone] = diabetes ? score2DiabetesCategory(percent) : score2Category(percent, age, guideline);
+      const version = diabetes ? "ESC 2023 · диабет" : guideline === "lipids2025" ? "ESC/EAS 2025 · липиды" : "ESC 2021 · профилактика";
+      const context = (SCORE2_COUNTRIES[country]?.[0] || "Регион выбран вручную") + "; региональный риск: " + SCORE2_REGION_NAMES[region] + ".";
+      const markedRisk = sbp >= 180 || tc > 8;
+      const warning = markedRisk ? " Выраженное повышение АД или холестерина требует отдельной оценки независимо от процента." : "";
+      const interpretation = (markedRisk ? "Есть независимо значимый фактор риска." : category) + " " + version + ".";
+      const formatted = formatNumber(percent, 1);
+      setResult(key, formatted, interpretation, markedRisk ? "warning" : tone,
+        context + " Не-ЛПВП: " + formatNumber(tc-hdl, 2) + " ммоль/л. Категория до округления." + warning,
+        name + ": " + formatted + "% за 10 лет. " + interpretation + " " + context + " " + age + " лет; " +
+        (sex === "female" ? "женщина" : "мужчина") + "; " + (input.smoking ? "курит" : "не курит") +
+        "; САД " + sbp + " мм рт. ст.; ОХС " + formatNumber(tc, 2) + "; ЛПВП " + formatNumber(hdl, 2) + " ммоль/л." + extra + warning);
+      return true;
+    }
+
     const PREVENT_COEFFICIENTS = {
       female: {
         cvd: [
@@ -615,13 +733,13 @@
       const sexInput = document.querySelector('input[name="preventSex"]:checked');
       const tcUnit = document.getElementById("preventTcUnit").value;
       const hdlUnit = document.getElementById("preventHdlUnit").value;
-      const smoking = Number(document.querySelector('input[name="preventSmoking"]:checked').value);
-      const diabetes = Number(document.querySelector('input[name="preventDiabetes"]:checked').value);
-      const bpTx = Number(document.querySelector('input[name="preventBpTx"]:checked').value);
-      const statin = Number(document.querySelector('input[name="preventStatin"]:checked').value);
+      const smoking = Number(document.querySelector('input[name="preventSmoking"]:checked')?.value);
+      const diabetes = Number(document.querySelector('input[name="preventDiabetes"]:checked')?.value);
+      const bpTx = Number(document.querySelector('input[name="preventBpTx"]:checked')?.value);
+      const statin = Number(document.querySelector('input[name="preventStatin"]:checked')?.value);
 
-      if (![age, sbp, bmi, egfr, tcRaw, hdlRaw].every(Number.isFinite) || !sexInput) {
-        setError("prevent", "Заполните все числовые поля и укажите пол.");
+      if (![age, sbp, bmi, egfr, tcRaw, hdlRaw, smoking, diabetes, bpTx, statin].every(Number.isFinite) || !sexInput) {
+        setError("prevent", "Заполните все числовые поля; укажите пол, курение, диабет и приём препаратов.");
         return false;
       }
       if (age < 30 || age > 79) {
@@ -1809,12 +1927,43 @@
       }
     }
 
+    function validateSharedPatient(raw) {
+      const data = {};
+      const ranges = {
+        Age: [1, 120, "возраст"], Sbp: [60, 260, "систолическое АД"],
+        Tc: [2, 12, "общий холестерин"], Hdl: [0.3, 4, "ЛПВП"],
+        Creatinine: [9, 3000, "креатинин"], Egfr: [1, 150, "СКФ"],
+        Weight: [10, 500, "массу тела"], Height: [50, 270, "рост"]
+      };
+      for (const [key, [min, max, label]] of Object.entries(ranges)) {
+        if (!String(raw[key] ?? "").trim()) continue;
+        const n = parseNumber(String(raw[key]));
+        if (!Number.isFinite(n) || n < min || n > max || (key === "Age" && !Number.isInteger(n))) return { error: "Проверьте " + label + ": допустимый ввод " + min + "–" + max + (key === "Age" ? " полных лет." : " в указанных единицах.") };
+        data[key] = n;
+      }
+      if (data.Tc !== undefined && data.Hdl !== undefined && data.Hdl >= data.Tc) return { error: "ЛПВП должен быть ниже общего холестерина." };
+      if (["female", "male"].includes(raw.Sex)) data.Sex = raw.Sex;
+      if (["0", "1"].includes(raw.Smoking)) data.Smoking = raw.Smoking;
+      return { data };
+    }
+
+    function sharedValueInUnit(value, kind, unit) {
+      if (["Tc", "Hdl"].includes(kind) && unit === "mgdl") return value / 0.02586;
+      if (kind === "Creatinine" && unit === "mgdl") return value / 88.4;
+      if (kind === "Weight" && unit === "lb") return value / 0.45359237;
+      if (kind === "Height" && unit === "m") return value / 100;
+      if (kind === "Height" && unit === "in") return value / 2.54;
+      return value;
+    }
+
     const calculators = {
       bmi: calculateBmi,
       egfr: calculateEgfr,
       mentzer: calculateMentzer,
       tsat: calculateTsat,
       score2: calculateScore2,
+      score2op: () => calculateExtendedScore2("score2op"),
+      score2diabetes: () => calculateExtendedScore2("score2diabetes"),
       prevent: calculatePrevent,
       phq9: calculatePhq9,
       gad7: calculateGad7,
@@ -1840,7 +1989,8 @@
       egfrcys: calculateEgfrcys
     };
 
-    const score2CountrySelect = document.getElementById("score2Country");
+    ["score2", "score2op", "score2diabetes"].forEach(key => {
+    const score2CountrySelect = document.getElementById(key + "Country");
     Object.entries(SCORE2_COUNTRIES).forEach(([code, [name]]) => {
       const option = document.createElement("option");
       option.value = code;
@@ -1855,15 +2005,16 @@
     function updateScore2Country() {
       const country = score2CountrySelect.value;
       const manual = country === "manual";
-      document.getElementById("score2ManualRegion").hidden = !manual;
+      document.getElementById(key + "ManualRegion").hidden = !manual;
       const region = SCORE2_COUNTRIES[country]?.[1];
-      document.getElementById("score2RegionHint").textContent = region
+      document.getElementById(key + "RegionHint").textContent = region
         ? "Региональный риск: " + SCORE2_REGION_NAMES[region] + " (ESC 2021)."
         : "Регион риска определяется по стране.";
     }
     score2CountrySelect.addEventListener("change", updateScore2Country);
-    document.getElementById("score2Form").addEventListener("reset", () => requestAnimationFrame(updateScore2Country));
+    document.getElementById(key + "Form").addEventListener("reset", () => requestAnimationFrame(updateScore2Country));
     updateScore2Country();
+    });
 
     function announce(message) {
       const status = document.getElementById("appStatus");
@@ -1921,6 +2072,8 @@
           mentzer: "Введите MCV и число эритроцитов.",
           tsat: "Введите показатели обмена железа.",
           score2: "Введите данные пациента.",
+          score2op: "Введите данные пациента.",
+          score2diabetes: "Введите данные пациента.",
           prevent: "Введите данные пациента.",
           phq9: "Ответьте на 9 вопросов.",
           gad7: "Ответьте на 7 вопросов.",
@@ -2067,6 +2220,8 @@
       clearResult("mentzer", "Введите MCV и число эритроцитов.");
       clearResult("tsat", "Введите показатели обмена железа.");
       clearResult("score2", "Введите данные пациента.");
+      clearResult("score2op", "Введите данные пациента.");
+      clearResult("score2diabetes", "Введите данные пациента.");
       clearResult("prevent", "Введите данные пациента.");
       clearResult("phq9", "Ответьте на 9 вопросов.");
       clearResult("gad7", "Ответьте на 7 вопросов.");
@@ -2109,12 +2264,75 @@
       });
     }
 
-    document.getElementById("resetAll")?.addEventListener("click", resetAll);
+    function startNewPatient() {
+      if (!window.confirm("Очистить все введённые данные и результаты для нового пациента? Избранное и тема останутся.")) return;
+      resetAll();
+      document.getElementById("sharedStatus").textContent = "Данные очищены. Можно вводить нового пациента.";
+      announce("Все данные пациента и результаты очищены.");
+    }
+    document.getElementById("resetAll")?.addEventListener("click", startNewPatient);
+    document.getElementById("newPatient")?.addEventListener("click", startNewPatient);
 
     function safeStorageGet(key) {
       try { return window.localStorage.getItem(key); }
       catch { return null; }
     }
+
+    async function prepareOffline() {
+      const status = document.getElementById("offlineStatus");
+      const updateButton = document.getElementById("appUpdate");
+      if (!("serviceWorker" in navigator) || !window.isSecureContext) {
+        status.textContent = "Офлайн-режим недоступен в этом браузере";
+        return;
+      }
+      let ready = false;
+      let updateRequested = false;
+      let controlled = Boolean(navigator.serviceWorker.controller);
+      let registration;
+      const updateStatus = () => {
+        status.textContent = ready ? (navigator.onLine ? "Доступно офлайн" : "Офлайн · внешние ссылки недоступны") : "Подготовка офлайн-копии…";
+      };
+      const offerUpdate = () => {
+        if (registration.waiting && navigator.serviceWorker.controller) {
+          updateButton.hidden = false;
+          status.textContent = "Есть новая версия";
+        }
+      };
+      try {
+        updateStatus();
+        registration = await navigator.serviceWorker.register(new URL("sw.js", window.location.href), { updateViaCache: "none" });
+        offerUpdate();
+        registration.addEventListener("updatefound", () => {
+          const installing = registration.installing;
+          installing?.addEventListener("statechange", () => {
+            if (installing.state === "installed") offerUpdate();
+            if (installing.state === "redundant" && !ready) status.textContent = "Офлайн-копия не готова: откройте приложение с интернетом";
+          });
+        });
+        navigator.serviceWorker.addEventListener("controllerchange", () => {
+          if (updateRequested) { window.location.reload(); return; }
+          if (controlled) { updateButton.hidden = false; status.textContent = "Новая версия готова к перезагрузке"; }
+          controlled = true;
+        });
+        updateButton.addEventListener("click", () => {
+          if (!window.confirm("Обновить приложение? Страница перезагрузится, все данные пациента и результаты будут очищены.")) return;
+          updateRequested = true;
+          updateButton.disabled = true;
+          status.textContent = "Обновление…";
+          if (registration.waiting) registration.waiting.postMessage({ type: "ACTIVATE_UPDATE" });
+          else window.location.reload();
+        });
+        await navigator.serviceWorker.ready;
+        ready = true;
+        updateStatus();
+        offerUpdate();
+        window.addEventListener("online", () => { updateStatus(); offerUpdate(); registration.update().catch(() => {}); });
+        window.addEventListener("offline", updateStatus);
+      } catch {
+        status.textContent = "Офлайн-копия не готова: проверьте соединение и настройки браузера";
+      }
+    }
+    window.addEventListener("load", prepareOffline, { once: true });
 
     function safeStorageSet(key, value) {
       try { window.localStorage.setItem(key, value); }
@@ -2559,7 +2777,7 @@
       placeholder();
     }
 
-    ["score2", "prevent"].forEach((key) => {
+    ["score2", "score2op", "score2diabetes", "prevent"].forEach((key) => {
       bindCholesterolUnit(key + "TcUnit", key + "Tc");
       bindCholesterolUnit(key + "HdlUnit", key + "Hdl", true);
       const note = document.createElement("small");
@@ -2567,6 +2785,24 @@
       note.textContent = "При смене единиц холестерина введённое значение пересчитывается автоматически.";
       document.getElementById(key + "Form").querySelector(".field-grid").appendChild(note);
     });
+
+    const hbaUnit = document.getElementById("score2diabetesHba1cUnit");
+    const hbaInput = document.getElementById("score2diabetesHba1c");
+    let previousHbaUnit = hbaUnit.value;
+    hbaUnit.addEventListener("change", () => {
+      if (hbaUnit.value !== previousHbaUnit && hbaInput.value.trim()) {
+        const n = parseNumber(hbaInput.value);
+        const ifcc = hba1cToIfcc(n, previousHbaUnit);
+        hbaInput.value = Number.isFinite(n) ? String(Number((hbaUnit.value === "percent" ? ifcc * 0.09148 + 2.152 : ifcc).toPrecision(8))).replace(".", ",") : "";
+        announce("Значение HbA1c переведено в выбранные единицы.");
+      }
+      previousHbaUnit = hbaUnit.value;
+      hbaInput.placeholder = hbaUnit.value === "percent" ? "Например, 7" : "Например, 53";
+    });
+    hbaUnit.closest("form").addEventListener("reset", () => requestAnimationFrame(() => {
+      previousHbaUnit = hbaUnit.value;
+      hbaInput.placeholder = "Например, 7";
+    }));
 
     function navigateToCalculator(id, updateHash = true) {
       const target = sections.find(section => section.id === id);
@@ -2581,6 +2817,71 @@
         target.focus({ preventScroll: true });
       });
     }
+
+    // Explicit, optional transfer. No patient data is written to storage or URLs.
+    const sharedTargets = {
+      Age: ["score2Age", "score2opAge", "score2diabetesAge", "preventAge", "cadAge", "afAge", "hasbledAge", "graceAge", "pdAge", "vtePercAge", "vteDdimAge", "pneuAge", "soreAge", "egfrAge", "egfrcysAge", "fib4Age", "adaptAge", "fraxAge"],
+      Sex: ["score2Sex", "score2opSex", "score2diabetesSex", "preventSex", "cadSex", "afSex", "qtcSex", "egfrSex", "egfrcysSex", "fraxSex"],
+      Smoking: ["score2Smoking", "score2opSmoking", "score2diabetesSmoking", "preventSmoking"],
+      Sbp: ["score2Sbp", "score2opSbp", "score2diabetesSbp", "preventSbp", "graceSbp", "pneuSbp"],
+      Tc: ["score2Tc", "score2opTc", "score2diabetesTc", "preventTc"],
+      Hdl: ["score2Hdl", "score2opHdl", "score2diabetesHdl", "preventHdl"],
+      Creatinine: ["egfrCreatinine", "egfrcysCreatinine", "graceCr"],
+      // Different eGFR equations: never silently copy CKD-EPI 2021 into the
+      // CKD-EPI 2009 input used by the published SCORE2-Diabetes model.
+      Egfr: ["preventEgfr"],
+      Weight: ["bmiWeight", "fraxWeight", "elWaterWeight"],
+      Height: ["bmiHeight", "fraxHeight"]
+    };
+    const sharedTarget = document.getElementById("sharedTarget");
+    const compatibleForms = new Set(Object.entries(sharedTargets).flatMap(([kind, ids]) => ids.map(id => {
+      const el = ["Sex", "Smoking"].includes(kind) ? document.querySelector('input[name="' + id + '"]') : document.getElementById(id);
+      return el?.closest("form")?.id;
+    })));
+    sections.filter(section => compatibleForms.has(section.id + "Form")).forEach(section => {
+      const option = document.createElement("option");
+      option.value = section.id;
+      option.textContent = section.querySelector("h2").textContent;
+      sharedTarget.appendChild(option);
+    });
+    document.querySelectorAll("form").forEach(form => form.setAttribute("autocomplete", "off"));
+    document.getElementById("sharedForm").addEventListener("submit", event => {
+      event.preventDefault();
+      const raw = Object.fromEntries(Object.keys(sharedTargets).map(key => [key, document.getElementById("shared" + key).value]));
+      const { data, error } = validateSharedPatient(raw);
+      document.getElementById("sharedError").textContent = error || "";
+      document.getElementById("sharedStatus").textContent = "";
+      if (error) return;
+      const target = sharedTarget.value;
+      const affected = new Set();
+      let count = 0;
+      for (const [kind, value] of Object.entries(data)) {
+        for (const id of sharedTargets[kind]) {
+          const radio = ["Sex", "Smoking"].includes(kind);
+          const el = radio ? document.querySelector('input[name="' + id + '"][value="' + value + '"]') : document.getElementById(id);
+          const form = el?.closest("form");
+          if (!form || (target !== "all" && form.id !== target + "Form")) continue;
+          if (radio ? document.querySelector('input[name="' + id + '"]:checked') : el.value.trim()) continue;
+          if (radio) el.checked = true;
+          else {
+            const unit = document.getElementById(id + "Unit")?.value;
+            el.value = String(Number(sharedValueInUnit(value, kind, unit).toPrecision(10))).replace(".", ",");
+          }
+          el.dispatchEvent(new Event("input", { bubbles: true }));
+          el.dispatchEvent(new Event("change", { bubbles: true }));
+          affected.add(form.id.replace("Form", ""));
+          count++;
+        }
+      }
+      const message = count ? "Заполнено полей: " + count + "; калькуляторов: " + affected.size + ". Уже введённые значения не заменены. Проверьте данные перед расчётом."
+        : "Нет пустых совместимых полей для переноса. Уже введённые значения не заменены.";
+      document.getElementById("sharedStatus").textContent = message;
+      announce(message);
+    });
+    document.getElementById("sharedForm").addEventListener("reset", () => {
+      document.getElementById("sharedError").textContent = "";
+      document.getElementById("sharedStatus").textContent = "";
+    });
 
     const favoritesKey = "medical-calculators-favorites";
     let favorites = new Set();

@@ -321,9 +321,20 @@ details ul { padding-left: 20px; }
   *, *::before, *::after { scroll-behavior: auto !important; animation: none !important; transition: none !important; }
 }
 @media print {
+  .patient-panel, .release-bar { display: none !important; }
   .sidebar, .mobile-topbar, .mobile-category-nav, .mobile-search-panel, .hero, .actions, .copy-button, .calc-tools, .to-top, .feedback-block, .skip-link { display: none !important; }
   body, .calculator, .result-box { background: white; color: black; }
   .app, .app-shell { display: block; max-width: none; padding: 0; }
   .calculator { box-shadow: none; break-inside: avoid; margin-bottom: 20px; }
   .calculator-grid, .calculator-group-grid { display: block; }
 }
+.release-bar { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; color: var(--muted); font-size: 11px; margin: 0 0 16px; }
+.release-bar button { color: var(--accent); background: var(--paper); border: 1px solid var(--line); border-radius: 7px; padding: 8px 12px; cursor: pointer; font: inherit; }
+.patient-panel { grid-column: 1 / -1; width: 100%; margin: 16px 0 0; padding: 0; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); }
+.patient-panel > summary { padding: 16px; font-size: 14px; }
+.patient-panel > summary span { display: block; font-size: 11px; color: var(--muted); font-weight: 400; margin-top: 4px; }
+.patient-panel > form { padding: 0 16px 16px; }
+.patient-panel .field-grid { margin-top: 16px; }
+.patient-panel .help { line-height: 1.5; }
+.patient-panel #sharedStatus:empty { display: none; }
+.patient-panel .actions { flex-wrap: wrap; }

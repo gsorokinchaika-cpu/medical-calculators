@@ -65,7 +65,9 @@ vm.runInContext(`${definitions}\n;globalThis.__app = {
   calculateMentzer, calculateTsat, calculateMmse, calculateFib4,
   calculateMaf5, calculateLiverpro, calculateEpworth, calculateAfstroke,
   calculateVte, calculateSorethroat, calculateQtc, calculateHasbled,
-  calculateCadptp, calculateEgfrcys, score2Category, SCORE2_COUNTRIES
+  calculateCadptp, calculateEgfrcys, score2Category, SCORE2_COUNTRIES,
+  score2OpRisk, score2DiabetesRisk, score2DiabetesCategory,
+  hba1cToIfcc, calculateExtendedScore2, validateSharedPatient, sharedValueInUnit
 };`, context, { filename: "medical-calculators-definitions.js" });
 
 const app = context.__app;
@@ -487,7 +489,8 @@ test("HTML: уникальные id, существующие якоря и ло
     await readFile(new URL(`../${match[1]}`, import.meta.url));
   }
   for (const match of appScript.matchAll(/getElementById\("([^"]+)"\)/g)) assert.ok(knownIds.has(match[1]), match[1]);
-  assert.equal((html.match(/<form\b/g) || []).length, 28);
+  assert.equal((html.match(/<form\b/g) || []).length, 31);
+  assert.equal((html.match(/class="calculator"/g) || []).length, 30);
   assert.ok(!html.includes("data:image"));
 });
 
@@ -519,4 +522,194 @@ test("навигация соответствует верхнему кальк�
   navContext.sections[0].hidden = true;
   navContext.sections[1].hidden = true;
   expectActive("fib4");
+});
+
+test("SCORE2-Diabetes: восемь результатов в авторском Excel, оба пола и все регионы", () => {
+  // ehad260, supplementary Excel, calculator B4:B11 and values D14:D17/H14:H17.
+  // Cached source workbook values, not generated from the implementation.
+  const input = { age: 53, diagnosisAge: 30, smoking: 1, sbp: 110, tc: 4.5, hdl: 1.4, hba1c: 55, egfr: 95 };
+  const expected = {
+    male: [9.955391638953781, 13.116444885691047, 15.388566936926818, 24.147741949388656],
+    female: [8.080021034297335, 10.302441868725165, 16.007637019557475, 27.86944753840701]
+  };
+  for (const sex of ["male", "female"]) for (const [i, region] of ["low", "moderate", "high", "veryHigh"].entries()) {
+    assert.ok(Math.abs(app.score2DiabetesRisk({ ...input, sex, region }) - expected[sex][i]) < 1e-10);
+  }
+});
+
+test("SCORE2-Diabetes: семь согласованных примеров в тексте статьи", () => {
+  const input = { age: 60, smoking: 0, sbp: 140, tc: 5.5, hdl: 1.3 };
+  for (const [sex, region, diagnosisAge, hba1c, egfr, expected] of [
+    ["male", "moderate", 60, 50, 90, 11.0],
+    ["male", "moderate", 50, 70, 60, 17.2], ["female", "moderate", 50, 70, 60, 12.7],
+    ["male", "low", 50, 70, 60, 12.9], ["female", "low", 50, 70, 60, 9.8],
+    ["male", "veryHigh", 50, 70, 60, 31.2], ["female", "veryHigh", 50, 70, 60, 34.0]
+  ]) {
+    const actual = app.score2DiabetesRisk({ ...input, sex, region, diagnosisAge, hba1c, egfr });
+    assert.ok(Math.abs(actual - expected) < 0.1, `${sex}/${region}: ${actual}, published ${expected}`);
+  }
+  // The paper's first female example says 7.9%, inconsistent with its
+  // exact Supplementary Table 1 / author Excel equations (7.588...%).
+  // Do not change coefficients or relax tolerance to force that example.
+  assert.ok(Math.abs(app.score2DiabetesRisk({ ...input, sex: "female", region: "moderate", diagnosisAge:60, hba1c:50, egfr:90 })-7.5881859285786)<1e-10);
+});
+
+test("SCORE2-OP: независимый двухэтапный пересчёт таблиц приложения, 640 профилей", () => {
+  // ehab312 Supplementary Methods Tables 1–3. Deliberately use separate
+  // vectors, ordinary powers/logs and Table 1 calibrations, not production helpers.
+  const coeff = {
+    male: [.0634, .3524, .0094, .0850, -.3564, -.0247, -.0005, .0073, .0091],
+    female: [.0789, .4921, .0102, .0605, -.3040, -.0255, -.0004, -.0009, .0154]
+  };
+  const cal = { male: [[-.34,1.19],[.01,1.25],[.08,1.15],[.05,.7]], female: [[-.52,1.01],[-.1,1.1],[.38,1.09],[.38,.69]] };
+  for (const sex of ["male", "female"]) for (const age of [70, 73, 75, 80, 89]) for (const smoking of [0, 1]) for (const sbp of [110, 170]) for (const tc of [4, 7]) for (const hdl of [1, 2]) for (const [i, region] of ["low", "moderate", "high", "veryHigh"].entries()) {
+    const a=age-73,s=sbp-150,t=tc-6,h=hdl-1.4;
+    const vector=[a,smoking,s,t,h,a*smoking,a*s,a*t,a*h];
+    const lp=vector.reduce((sum, value, index)=>sum+value*coeff[sex][index],0);
+    const base=1-Math.pow(sex==="male"?.7576:.8082,Math.exp(lp-(sex==="male"?.0929:.229)));
+    const [c1,c2]=cal[sex][i];
+    const reference=100*(1-Math.exp(-Math.exp(c1+c2*Math.log(-Math.log(1-base)))));
+    assert.ok(Math.abs(app.score2OpRisk({age,sex,smoking,sbp,tc,hdl,region})-reference)<1e-10);
+  }
+});
+
+function extendedExample(key = "score2diabetes") {
+  setValues(Object.fromEntries(Object.entries({ Eligibility: "eligible", Age: key === "score2op" ? 75 : 60,
+    Sbp: 140, Tc: 5.5, Hdl: 1.3, TcUnit: "mmol", HdlUnit: "mmol", Country: "DE", Region: "", Guideline: "prevention2021",
+    DiagnosisAge: 60, Hba1c: 50, Hba1cUnit: "ifcc", Egfr: 90, UacrCategory: "a1"
+  }).map(([suffix, value]) => [key + suffix, value])));
+  setRadio(key + "Sex", "male"); setRadio(key + "Smoking", "0");
+}
+
+test("SCORE2-OP и Diabetes: формы, пустые ответы, ограничения возраста и применимости", () => {
+  for (const key of ["score2op", "score2diabetes"]) {
+    extendedExample(key);
+    assert.equal(app.calculateExtendedScore2(key), true);
+    assert.ok(app.state.results[key]);
+    for (const age of (key === "score2op" ? [69, 90, 75.5] : [39, 70, 60.5])) {
+      setValues({ [key + "Age"]: age });
+      assert.equal(app.calculateExtendedScore2(key), false);
+      assert.equal(app.state.results[key], null);
+    }
+    for (const eligibility of ["", "ineligible", "other"]) {
+      extendedExample(key); setValues({ [key + "Eligibility"]: eligibility });
+      assert.equal(app.calculateExtendedScore2(key), false);
+    }
+    extendedExample(key); namedInputs.delete(key + "Smoking");
+    assert.equal(app.calculateExtendedScore2(key), false);
+    extendedExample(key); setValues({ [key + "Country"]: "" });
+    assert.equal(app.calculateExtendedScore2(key), false);
+  }
+});
+
+test("SCORE2-Diabetes: тяжёлое поражение почек исключает расчёт", () => {
+  for (const [egfr, uacr, allowed] of [[44.9,"a1",false],[45,"a1",true],[59.9,"a2",false],[60,"a2",true],[90,"a3",false],[90,"",false]]) {
+    extendedExample(); setValues({ score2diabetesEgfr: egfr, score2diabetesUacrCategory: uacr });
+    assert.equal(app.calculateExtendedScore2("score2diabetes"), allowed, `${egfr}/${uacr}`);
+    if (!allowed) assert.equal(getElement("copy-score2diabetes").disabled, true);
+  }
+});
+
+test("SCORE2-Diabetes: HbA1c, возраст диагноза, все сочетания единиц липидов", () => {
+  for (const unit of ["ifcc", "percent"]) for (const tcUnit of ["mmol", "mgdl"]) for (const hdlUnit of ["mmol", "mgdl"]) {
+    extendedExample();
+    setValues({ score2diabetesHba1cUnit: unit, score2diabetesHba1c: unit === "ifcc" ? 50 : 50*.09148+2.152,
+      score2diabetesTcUnit: tcUnit, score2diabetesTc: tcUnit === "mmol" ? 5.5 : 5.5/.02586,
+      score2diabetesHdlUnit: hdlUnit, score2diabetesHdl: hdlUnit === "mmol" ? 1.3 : 1.3/.02586 });
+    assert.equal(app.calculateExtendedScore2("score2diabetes"), true);
+    assert.equal(resultNumber("score2diabetes"), 11);
+  }
+  for (const value of ["", 0, 61, 50.5]) {
+    extendedExample(); setValues({ score2diabetesDiagnosisAge: value });
+    assert.equal(app.calculateExtendedScore2("score2diabetes"), false);
+  }
+  for (const value of ["", -1, 200]) {
+    extendedExample(); setValues({ score2diabetesHba1c: value });
+    assert.equal(app.calculateExtendedScore2("score2diabetes"), false);
+  }
+  assert.ok(Math.abs(app.hba1cToIfcc(6.726, "percent") - 50) < 1e-10);
+});
+
+test("новые SCORE2: точные границы категорий до округления", () => {
+  for (const [n, expected] of [[7.499,"good"],[7.5,"warning"],[14.999,"warning"],[15,"danger"]]) assert.equal(app.score2Category(n,75,"prevention2021")[1],expected);
+  for (const [n, expected] of [[4.999,"Низкий"],[5,"Умеренный"],[9.999,"Умеренный"],[10,"Высокий"],[19.999,"Высокий"],[20,"Очень высокий"]]) assert.ok(app.score2DiabetesCategory(n)[0].startsWith(expected));
+});
+
+test("общие данные: пустое не становится нулём, строгая валидация и единицы", () => {
+  assert.equal(Object.keys(app.validateSharedPatient({ Age: "", Sbp: " " }).data).length, 0);
+  assert.equal(app.validateSharedPatient({ Age: "60", Tc: "5,5", Hdl: "1,3", Smoking: "0" }).data.Smoking,"0");
+  for (const raw of [{Age:"60.5"},{Age:"0"},{Sbp:"abc"},{Tc:"5",Hdl:"5"},{Creatinine:"-1"}]) assert.ok(app.validateSharedPatient(raw).error);
+  for (const [value,kind,unit,expected] of [[5.5,"Tc","mgdl",5.5/.02586],[88.4,"Creatinine","mgdl",1],[70,"Weight","lb",70/.45359237],[170,"Height","m",1.7],[170,"Height","in",170/2.54]]) assert.ok(Math.abs(app.sharedValueInUnit(value,kind,unit)-expected)<1e-10);
+});
+
+test("PREVENT не подставляет отрицательные ответы при отсутствии данных", () => {
+  namedInputs.delete("preventSmoking");
+  assert.equal(app.calculatePrevent(), false);
+  assert.equal(app.state.results.prevent, null);
+  const answers = [...html.matchAll(/<input\b[^>]*\bname="prevent(?:Smoking|Diabetes|BpTx|Statin)"[^>]*>/g)];
+  assert.equal(answers.length, 8);
+  for (const [input] of answers) assert.doesNotMatch(input, /\schecked(?:\s|=|\/?>)/);
+});
+
+test("разные модели СКФ не смешиваются при переносе общих показателей", () => {
+  assert.match(appScript, /Egfr: \["preventEgfr"\]/);
+  assert.match(html, /for="score2diabetesEgfr">СКФ CKD-EPI 2009/);
+  assert.match(html, /for="sharedEgfr">СКФ CKD-EPI 2021/);
+});
+
+test("клиент офлайн: первая активация не выглядит как обновление и не стирает поля", async () => {
+  const handlers = {}, regHandlers = {}, winHandlers = {};
+  const status = { textContent: "" }, update = { hidden: true, disabled:false, addEventListener(){} };
+  let reloads=0;
+  const sw = { controller:null, ready:Promise.resolve({}),
+    async register() { return { waiting:null, addEventListener(type,fn){regHandlers[type]=fn;} }; },
+    addEventListener(type,fn) { handlers[type]=fn; } };
+  const c=vm.createContext({URL,Boolean,Promise,navigator:{serviceWorker:sw,onLine:true},
+    document:{getElementById:id=>id==="offlineStatus"?status:update},
+    window:{isSecureContext:true,location:{href:"https://example.test/medical-calculators/",reload:()=>reloads++},addEventListener(type,fn){winHandlers[type]=fn;}} });
+  const start=appScript.indexOf("    async function prepareOffline()");
+  const end=appScript.indexOf('    window.addEventListener("load", prepareOffline',start);
+  vm.runInContext(appScript.slice(start,end),c);
+  await vm.runInContext("prepareOffline()",c);
+  sw.controller={}; handlers.controllerchange();
+  assert.equal(update.hidden,true);
+  assert.equal(status.textContent,"Доступно офлайн");
+  assert.equal(reloads,0);
+  handlers.controllerchange();
+  assert.equal(update.hidden,false);
+  assert.match(status.textContent,/перезагрузке/);
+  assert.equal(reloads,0);
+});
+
+test("клиент офлайн: отмена обновления ничего не активирует; согласие ждёт controllerchange", async () => {
+  const handlers = {}, buttonHandlers={};
+  let consent=false, activations=0, reloads=0;
+  const status={textContent:""}, button={hidden:true,disabled:false,addEventListener(type,fn){buttonHandlers[type]=fn;}};
+  const registration={waiting:{postMessage(message){assert.equal(message.type,"ACTIVATE_UPDATE");activations++;}},addEventListener(){}};
+  const c=vm.createContext({URL,Boolean,Promise,
+    navigator:{onLine:true,serviceWorker:{controller:{},ready:Promise.resolve(registration),async register(){return registration;},addEventListener(type,fn){handlers[type]=fn;}}},
+    document:{getElementById:id=>id==="offlineStatus"?status:button},
+    window:{isSecureContext:true,confirm:()=>consent,location:{href:"https://example.test/app/",reload:()=>reloads++},addEventListener(){}}});
+  const start=appScript.indexOf("    async function prepareOffline()");
+  const end=appScript.indexOf('    window.addEventListener("load", prepareOffline',start);
+  vm.runInContext(appScript.slice(start,end),c);
+  await vm.runInContext("prepareOffline()",c);
+  assert.equal(button.hidden,false);
+  buttonHandlers.click();
+  assert.equal(activations,0); assert.equal(reloads,0); assert.equal(button.disabled,false);
+  consent=true; buttonHandlers.click();
+  assert.equal(activations,1); assert.equal(reloads,0); assert.equal(button.disabled,true);
+  handlers.controllerchange(); assert.equal(reloads,1);
+});
+
+test("новый пациент: отмена сохраняет данные; согласие вызывает полную очистку", () => {
+  let consent=false, resets=0, announced="";
+  const status={textContent:""};
+  const c=vm.createContext({window:{confirm:()=>consent},document:{getElementById:()=>status},resetAll:()=>resets++,announce:message=>announced=message});
+  const start=appScript.indexOf("    function startNewPatient()");
+  const end=appScript.indexOf('    document.getElementById("resetAll")?.addEventListener',start);
+  vm.runInContext(appScript.slice(start,end),c);
+  vm.runInContext("startNewPatient()",c); assert.equal(resets,0);
+  consent=true; vm.runInContext("startNewPatient()",c); assert.equal(resets,1);
+  assert.match(announced,/очищены/);
 });
