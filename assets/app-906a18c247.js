@@ -2324,6 +2324,7 @@
 
       if (emptySearch) emptySearch.hidden = visibleCount !== 0;
       announce("Найдено калькуляторов: " + visibleCount + ".");
+      updateActiveNavigation();
     }
 
     function resetSearchFiltering() {
@@ -2334,6 +2335,7 @@
         group.hidden = false;
       });
       if (emptySearch) emptySearch.hidden = true;
+      updateActiveNavigation();
     }
 
     function setActiveSuggestion(index) {
@@ -2687,17 +2689,29 @@
     document.body.appendChild(toTop);
     window.addEventListener("scroll", () => { toTop.hidden = window.scrollY < 800; }, { passive: true });
 
-    if ("IntersectionObserver" in window) {
-      const observer = new IntersectionObserver((entries) => {
-        const visible = entries
-          .filter(entry => entry.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-
-        if (!visible) return;
-        navButtons.forEach(button => {
-          button.classList.toggle("active", button.dataset.target === visible.target.id);
-        });
-      }, { rootMargin: "-25% 0px -60% 0px", threshold: [0.05, 0.2, 0.5] });
-
-      sections.forEach(section => observer.observe(section));
+    function updateActiveNavigation() {
+      const activationLine = window.matchMedia("(max-width: 980px)").matches
+        ? 124 : Math.min(200, window.innerHeight * 0.3);
+      let current = sections.find(section => !section.hidden);
+      for (const section of sections) {
+        if (section.hidden) continue;
+        if (section.getBoundingClientRect().top > activationLine) break;
+        current = section;
+      }
+      if (!current) return;
+      navButtons.forEach(button => {
+        button.classList.toggle("active", button.dataset.target === current.id);
+      });
     }
+
+    let navigationFrame = 0;
+    function scheduleNavigationUpdate() {
+      if (navigationFrame) return;
+      navigationFrame = requestAnimationFrame(() => {
+        navigationFrame = 0;
+        updateActiveNavigation();
+      });
+    }
+    window.addEventListener("scroll", scheduleNavigationUpdate, { passive: true });
+    window.addEventListener("resize", scheduleNavigationUpdate, { passive: true });
+    updateActiveNavigation();

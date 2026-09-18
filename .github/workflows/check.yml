@@ -17,5 +17,5 @@ jobs:
           node-version: '22'
       - name: Syntax and regression tests
         run: |
-          node --check assets/app-8d35e15ebc.js
+          node --check assets/app-906a18c247.js
           node --test tests/calculators.test.mjs

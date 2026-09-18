@@ -490,3 +490,33 @@ test("HTML: уникальные id, существующие якоря и ло
   assert.equal((html.match(/<form\b/g) || []).length, 28);
   assert.ok(!html.includes("data:image"));
 });
+
+test("навигация соответствует верхнему калькулятору, прокрутке и фильтру", () => {
+  const selected = new Set();
+  const positions = [289, 2000, 4000];
+  const sectionIds = ["score2", "prevent", "fib4"];
+  const navContext = vm.createContext({
+    Math,
+    window: { innerHeight: 720, matchMedia: () => ({ matches: false }) },
+    sections: sectionIds.map((id, i) => ({ id, hidden: false, getBoundingClientRect: () => ({ top: positions[i] }) })),
+    navButtons: sectionIds.map(id => ({ dataset: { target: id }, classList: {
+      toggle: (_, active) => active ? selected.add(id) : selected.delete(id)
+    } }))
+  });
+  const start = appScript.indexOf("    function updateActiveNavigation()");
+  const end = appScript.indexOf("    let navigationFrame", start);
+  assert.ok(start > 0 && end > start);
+  vm.runInContext(appScript.slice(start, end), navContext);
+  const expectActive = (id) => {
+    vm.runInContext("updateActiveNavigation()", navContext);
+    assert.deepEqual([...selected], [id]);
+  };
+  expectActive("score2");
+  positions[0] = -1800; positions[1] = 20;
+  expectActive("prevent");
+  positions[0] = 289; positions[1] = 2000;
+  expectActive("score2");
+  navContext.sections[0].hidden = true;
+  navContext.sections[1].hidden = true;
+  expectActive("fib4");
+});
