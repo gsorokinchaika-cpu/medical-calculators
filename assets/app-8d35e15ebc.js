@@ -1,4 +1,5 @@
 "use strict";
+// v3.6: проверенные расчёты, независимые единицы и быстрый доступ.
 
     const state = {
       results: {
@@ -53,6 +54,7 @@
       const error = document.getElementById(key + "Error");
       if (message) {
         clearResult(key, "Исправьте исходные данные.");
+        resetAuxiliaryMetrics(key);
         error.textContent = message;
       } else {
         error.textContent = "";
@@ -65,7 +67,7 @@
         egfr: "Одно значение СКФ не устанавливает диагноз ХБП. Важны повторные измерения, длительность изменений и альбуминурия.",
         mentzer: "Это ориентир при микроцитозе, а не самостоятельный диагностический тест.",
         tsat: "Интерпретируйте вместе с ферритином, воспалительными маркерами и клиническим контекстом; референсы лабораторий различаются.",
-        score2: "Для людей 40–69 лет без установленного ССЗ и сахарного диабета. Для ≥70 лет требуется SCORE2-OP.",
+        score2: "Для возраста 40–69 лет при соблюдении условий применимости. С 70 лет используйте SCORE2-OP.",
         prevent: "Total CVD включает ASCVD и сердечную недостаточность. Используется базовая модель без дополнительных предикторов.",
         phq9: "Скрининговая шкала не устанавливает диагноз. Положительный ответ на пункт 9 требует отдельной оценки безопасности.",
         gad7: "Скрининговая шкала отражает выраженность симптомов, но не заменяет клиническую диагностику.",
@@ -369,6 +371,57 @@
       return unit === "mmol" ? value / 0.02586 : value;
     }
 
+    // Country clusters: ESC Prevention Guidelines 2021, Figure 3.
+    // https://doi.org/10.1093/eurheartj/ehab484
+    const SCORE2_COUNTRIES = {
+      RU: ["Россия", "veryHigh"], BY: ["Беларусь", "veryHigh"],
+      KZ: ["Казахстан", "high"],
+      AT: ["Австрия", "moderate"], AZ: ["Азербайджан", "veryHigh"],
+      AL: ["Албания", "high"], DZ: ["Алжир", "veryHigh"],
+      AM: ["Армения", "veryHigh"], BE: ["Бельгия", "low"],
+      BG: ["Болгария", "veryHigh"], BA: ["Босния и Герцеговина", "high"],
+      GB: ["Великобритания", "low"], HU: ["Венгрия", "high"],
+      DE: ["Германия", "moderate"], GR: ["Греция", "moderate"],
+      GE: ["Грузия", "veryHigh"], DK: ["Дания", "low"],
+      EG: ["Египет", "veryHigh"], IL: ["Израиль", "low"],
+      IE: ["Ирландия", "moderate"], IS: ["Исландия", "moderate"],
+      ES: ["Испания", "low"], IT: ["Италия", "moderate"],
+      CY: ["Кипр", "moderate"], KG: ["Кыргызстан", "veryHigh"],
+      LV: ["Латвия", "veryHigh"], LB: ["Ливан", "veryHigh"],
+      LY: ["Ливия", "veryHigh"], LT: ["Литва", "veryHigh"],
+      LU: ["Люксембург", "low"], MT: ["Мальта", "moderate"],
+      MA: ["Марокко", "veryHigh"], MD: ["Молдова", "veryHigh"],
+      NL: ["Нидерланды", "low"], NO: ["Норвегия", "low"],
+      PL: ["Польша", "high"], PT: ["Португалия", "moderate"],
+      RO: ["Румыния", "veryHigh"], SM: ["Сан-Марино", "moderate"],
+      MK: ["Северная Македония", "veryHigh"], RS: ["Сербия", "veryHigh"],
+      SY: ["Сирия", "veryHigh"], SK: ["Словакия", "high"],
+      SI: ["Словения", "moderate"], TN: ["Тунис", "veryHigh"],
+      TR: ["Турция", "high"], UZ: ["Узбекистан", "veryHigh"],
+      UA: ["Украина", "veryHigh"], FI: ["Финляндия", "moderate"],
+      FR: ["Франция", "low"], HR: ["Хорватия", "high"],
+      ME: ["Черногория", "veryHigh"], CZ: ["Чехия", "high"],
+      CH: ["Швейцария", "low"], SE: ["Швеция", "moderate"],
+      EE: ["Эстония", "high"]
+    };
+    const SCORE2_REGION_NAMES = {
+      low: "низкий", moderate: "умеренный", high: "высокий", veryHigh: "очень высокий"
+    };
+
+    function score2Category(percent, age, guideline) {
+      if (guideline === "lipids2025") {
+        if (percent < 2) return ["Низкий риск.", "good"];
+        if (percent < 10) return ["Умеренный риск.", "warning"];
+        if (percent < 20) return ["Высокий риск.", "warning"];
+        return ["Очень высокий риск.", "danger"];
+      }
+      const low = age < 50 ? 2.5 : 5;
+      const high = age < 50 ? 7.5 : 10;
+      if (percent < low) return ["Низкий–умеренный риск.", "good"];
+      if (percent < high) return ["Высокий риск.", "warning"];
+      return ["Очень высокий риск.", "danger"];
+    }
+
     function calculateScore2() {
       setError("score2", "");
 
@@ -377,17 +430,36 @@
       const tcRaw = parseNumber(document.getElementById("score2Tc").value);
       const hdlRaw = parseNumber(document.getElementById("score2Hdl").value);
       const sexInput = document.querySelector('input[name="score2Sex"]:checked');
-      const smoking = Number(document.querySelector('input[name="score2Smoking"]:checked').value);
-      const region = document.getElementById("score2Region").value;
+      const smokingInput = document.querySelector('input[name="score2Smoking"]:checked');
+      const smoking = smokingInput ? Number(smokingInput.value) : NaN;
+      const country = document.getElementById("score2Country").value;
+      const region = country === "manual" ? document.getElementById("score2Region").value : SCORE2_COUNTRIES[country]?.[1];
+      const eligibility = document.getElementById("score2Eligibility").value;
+      const guideline = document.getElementById("score2Guideline").value;
       const tcUnit = document.getElementById("score2TcUnit").value;
       const hdlUnit = document.getElementById("score2HdlUnit").value;
 
-      if (![age, sbp, tcRaw, hdlRaw].every(Number.isFinite) || !sexInput || !region) {
-        setError("score2", "Укажите возраст, пол, регион риска, АД, общий холестерин и ЛПВП.");
+      if (!eligibility) {
+        setError("score2", "Укажите условия применимости SCORE2.");
         return false;
       }
-      if (age < 40 || age > 69) {
-        setError("score2", "SCORE2 предназначен для возраста 40–69 лет.");
+      if (eligibility !== "eligible") {
+        const reasons = {
+          cvd: "При установленном ССЗ SCORE2 не используется: требуется оценка для вторичной профилактики.",
+          diabetes: "При сахарном диабете обычный SCORE2 не применяется. Для подходящих пациентов с СД 2 типа используют SCORE2-Diabetes.",
+          ckd: "При ХБП риск оценивают с учётом СКФ и альбуминурии; обычный SCORE2 не определяет категорию риска.",
+          fh: "При семейной гиперхолестеринемии или генетических нарушениях липидов/АД обычный SCORE2 не применяется.",
+          pregnancy: "SCORE2 не предназначен для оценки риска при беременности."
+        };
+        setError("score2", reasons[eligibility] || "Проверьте применимость SCORE2.");
+        return false;
+      }
+      if (![age, sbp, tcRaw, hdlRaw, smoking].every(Number.isFinite) || !sexInput || !SCORE2_REGION_NAMES[region]) {
+        setError("score2", "Укажите возраст, пол, курение, страну, АД, общий холестерин и ЛПВП.");
+        return false;
+      }
+      if (!Number.isInteger(age) || age < 40 || age > 69) {
+        setError("score2", "Введите возраст в полных годах, от 40 до 69. С 70 лет используйте SCORE2-OP.");
         return false;
       }
       if (sbp < 80 || sbp > 240) {
@@ -403,6 +475,8 @@
         return false;
       }
 
+      // Parameters to four decimal places, EHJ 2022, Table 1.
+      // https://doi.org/10.1093/eurheartj/ehab761
       const ageT = (age - 60) / 5;
       const sbpT = (sbp - 120) / 20;
       const tcT = tc - 6;
@@ -462,47 +536,26 @@
         1 - Math.exp(-Math.exp(scale1 + scale2 * Math.log(-Math.log(1 - baseRisk))));
       const percent = calibratedRisk * 100;
 
-      let category;
-      let tone;
-      if (age < 50) {
-        if (percent < 2.5) {
-          category = "Низкий–умеренный риск.";
-          tone = "good";
-        } else if (percent < 7.5) {
-          category = "Высокий риск.";
-          tone = "warning";
-        } else {
-          category = "Очень высокий риск.";
-          tone = "danger";
-        }
-      } else {
-        if (percent < 5) {
-          category = "Низкий–умеренный риск.";
-          tone = "good";
-        } else if (percent < 10) {
-          category = "Высокий риск.";
-          tone = "warning";
-        } else {
-          category = "Очень высокий риск.";
-          tone = "danger";
-        }
-      }
-
+      const [category, tone] = score2Category(percent, age, guideline);
+      const version = guideline === "lipids2025" ? "ESC/EAS 2025 · липиды" : "ESC 2021 · профилактика";
       const valueText = formatNumber(percent, 1);
-      const regionNames = {
-        low: "низкий",
-        moderate: "умеренный",
-        high: "высокий",
-        veryHigh: "очень высокий"
-      };
+      const countryText = SCORE2_COUNTRIES[country]?.[0] || "регион выбран вручную";
+      const context = countryText + "; региональный риск: " + SCORE2_REGION_NAMES[region] + ".";
+      const markedRisk = sbp >= 180 || tc > 8;
+      const note = context + " Не-ЛПВП: " + formatNumber(tc - hdl, 2) + " ммоль/л. " +
+        (markedRisk ? "Выраженное повышение АД или холестерина требует отдельной оценки риска независимо от процента SCORE2." : "Категория определяется до округления. Учитывайте клинические модификаторы риска.");
 
       setResult(
         "score2",
         valueText,
-        category,
-        tone,
-        "Региональная калибровка: " + regionNames[region] + " риск. Результат нужно использовать вместе с клиническими модификаторами риска.",
-        "SCORE2: " + valueText + "% за 10 лет — " + category + " Регион риска: " + regionNames[region] + "."
+        (markedRisk ? "Есть независимо значимый фактор риска. " : category + " ") + version + ".",
+        markedRisk ? "warning" : tone,
+        note,
+        "SCORE2: " + valueText + "% за 10 лет. " + context + " " + version + ": " +
+        (markedRisk ? "Категория по одной шкале не определяет клинический риск." : category) +
+        " Исходные данные: " + age + " лет; " + (female ? "женщина" : "мужчина") + "; " +
+        (smoking ? "курит" : "не курит") + "; САД " + sbp + " мм рт. ст.; ОХС " + formatNumber(tc, 2) +
+        "; ЛПВП " + formatNumber(hdl, 2) + " ммоль/л." + (markedRisk ? " " + note : "")
       );
       return true;
     }
@@ -773,6 +826,10 @@
       if (score < lower) { interpretation = "Низкий риск продвинутого фиброза."; tone = "good"; }
       else if (score <= 2.67) { interpretation = "Промежуточный результат — требуется вторичная оценка."; tone = "warning"; }
       else { interpretation = "Высокий риск продвинутого фиброза."; tone = "danger"; }
+      if (age < 35) {
+        interpretation = "Надёжно определить категорию риска по FIB-4 в этом возрасте нельзя.";
+        tone = "warning";
+      }
       const valueText = formatNumber(score, 2);
       setResult("fib4", valueText, interpretation, tone, note, "FIB-4: " + valueText + ". " + interpretation);
       return true;
@@ -1159,8 +1216,8 @@
       const values = [bazett, fridericia, framingham, hodges].map(Math.round);
       const metrics = document.querySelectorAll("#qtcMetrics strong");
       values.forEach((v, i) => metrics[i].textContent = v + " мс");
-      const [interpretation, tone] = qtcTone(values[1], sex.value);
-      let note = "ЧСС: " + formatNumber(hr, 0) + "/мин. ";
+      const [interpretation, tone] = qtcTone(fridericia, sex.value);
+      let note = "ЧСС: " + formatNumber(hr, 0) + "/мин. Категория по Fridericia до округления: " + formatNumber(fridericia, 2) + " мс. ";
       if (hr > 100) note += "При тахикардии Bazett часто завышает QTc.";
       else if (hr < 60) note += "При брадикардии Bazett часто занижает QTc.";
       else note += "Сопоставьте результат с морфологией T, лекарствами, электролитами и клиническим контекстом.";
@@ -1739,6 +1796,19 @@
       return true;
     }
 
+    function resetAuxiliaryMetrics(key) {
+      if (key === "qtc") {
+        document.querySelectorAll("#qtcMetrics strong").forEach((element) => {
+          element.textContent = "—";
+        });
+      }
+      if (key === "egfrcys") {
+        document.getElementById("egfrcysResultLabel").textContent = "Расчётная СКФ";
+        document.getElementById("egfrcysOnlyMetric").textContent = "—";
+        document.getElementById("egfrcysCombinedMetric").textContent = "нужен креатинин";
+      }
+    }
+
     const calculators = {
       bmi: calculateBmi,
       egfr: calculateEgfr,
@@ -1770,17 +1840,34 @@
       egfrcys: calculateEgfrcys
     };
 
-    function resetAuxiliaryMetrics(key) {
-      if (key === "qtc") {
-        document.querySelectorAll("#qtcMetrics strong").forEach((element) => {
-          element.textContent = "—";
-        });
-      }
-      if (key === "egfrcys") {
-        document.getElementById("egfrcysResultLabel").textContent = "Расчётная СКФ";
-        document.getElementById("egfrcysOnlyMetric").textContent = "—";
-        document.getElementById("egfrcysCombinedMetric").textContent = "нужен креатинин";
-      }
+    const score2CountrySelect = document.getElementById("score2Country");
+    Object.entries(SCORE2_COUNTRIES).forEach(([code, [name]]) => {
+      const option = document.createElement("option");
+      option.value = code;
+      option.textContent = name;
+      score2CountrySelect.appendChild(option);
+    });
+    const manualCountryOption = document.createElement("option");
+    manualCountryOption.value = "manual";
+    manualCountryOption.textContent = "Выбрать регион вручную";
+    score2CountrySelect.appendChild(manualCountryOption);
+
+    function updateScore2Country() {
+      const country = score2CountrySelect.value;
+      const manual = country === "manual";
+      document.getElementById("score2ManualRegion").hidden = !manual;
+      const region = SCORE2_COUNTRIES[country]?.[1];
+      document.getElementById("score2RegionHint").textContent = region
+        ? "Региональный риск: " + SCORE2_REGION_NAMES[region] + " (ESC 2021)."
+        : "Регион риска определяется по стране.";
+    }
+    score2CountrySelect.addEventListener("change", updateScore2Country);
+    document.getElementById("score2Form").addEventListener("reset", () => requestAnimationFrame(updateScore2Country));
+    updateScore2Country();
+
+    function announce(message) {
+      const status = document.getElementById("appStatus");
+      status.textContent = message;
     }
 
     function invalidateResult(key) {
@@ -1793,7 +1880,11 @@
       const form = document.getElementById(key + "Form");
       form.addEventListener("submit", (event) => {
         event.preventDefault();
-        fn();
+        const success = fn();
+        const target = document.getElementById(key + (success ? "Result" : "Error"));
+        target.setAttribute("tabindex", "-1");
+        target.focus({ preventScroll: true });
+        target.scrollIntoView({ behavior: preferredScrollBehavior(), block: "nearest" });
       });
       form.addEventListener("input", () => invalidateResult(key));
       form.addEventListener("change", () => invalidateResult(key));
@@ -1925,12 +2016,7 @@
 
     const copyTimers = new WeakMap();
 
-    document.querySelectorAll(".copy-button").forEach((button) => {
-      button.addEventListener("click", async () => {
-        const key = button.dataset.copy;
-        const text = state.results[key];
-        if (!text) return;
-
+    async function copyTextToClipboard(text, button) {
         let copied = false;
         try {
           await navigator.clipboard.writeText(text);
@@ -1945,16 +2031,25 @@
           try { copied = document.execCommand("copy"); }
           catch { copied = false; }
           finally { textarea.remove(); }
+          button.focus({ preventScroll: true });
         }
 
         const original = button.dataset.originalText || button.textContent;
         button.dataset.originalText = original;
-        button.textContent = copied ? "Скопировано" : "Не удалось";
+        button.textContent = button.classList.contains("permalink-button")
+          ? (copied ? "✓" : "×") : (copied ? "Скопировано" : "Не удалось");
+        announce(copied ? "Скопировано в буфер обмена." : "Копирование недоступно. Выделите текст результата вручную.");
         clearTimeout(copyTimers.get(button));
         copyTimers.set(button, setTimeout(() => {
           button.textContent = original;
           copyTimers.delete(button);
         }, 1300));
+    }
+
+    document.querySelectorAll(".copy-button").forEach((button) => {
+      button.addEventListener("click", () => {
+        const text = state.results[button.dataset.copy];
+        if (text) copyTextToClipboard(text, button);
       });
     });
 
@@ -2034,8 +2129,14 @@
     function updateThemeColor() {
       themeColorMeta?.setAttribute(
         "content",
-        document.documentElement.dataset.theme === "night" ? "#2d2932" : "#f6ead9"
+        document.documentElement.dataset.theme === "night" ? "#141e2b" : "#f6f7f9"
       );
+      const night = document.documentElement.dataset.theme === "night";
+      themeButtons.forEach((button) => {
+        button.setAttribute("aria-pressed", String(night));
+        button.setAttribute("aria-label", night ? "Включить светлую тему" : "Включить тёмную тему");
+        if (button.classList.contains("utility-button")) button.textContent = night ? "☀ Светлая тема" : "◐ Тёмная тема";
+      });
     }
 
     updateThemeColor();
@@ -2061,9 +2162,7 @@
     const navButtons = document.querySelectorAll(".nav-button");
     navButtons.forEach((button) => {
       button.addEventListener("click", () => {
-        navButtons.forEach(item => item.classList.remove("active"));
-        button.classList.add("active");
-        document.getElementById(button.dataset.target).scrollIntoView({ behavior: preferredScrollBehavior(), block: "start" });
+        navigateToCalculator(button.dataset.target);
       });
     });
 
@@ -2155,7 +2254,7 @@
         }
       });
 
-      if (matchedTokens !== tokens.length) return 0;
+      if (matchedTokens !== tokens.length && !compactTitle.includes(compactQuery)) return 0;
       score += matchedTokens * 10;
       return score;
     }
@@ -2179,7 +2278,8 @@
           )).map((element) => element.textContent).join(" ");
           return {
             element: section,
-            haystack: normalizeSearchText((section.dataset.search || "") + " " + staticText)
+            haystack: normalizeSearchText((section.dataset.search || "") + " " + staticText),
+            compactTitle: normalizeSearchText(section.querySelector("h2")?.textContent).replace(/\s+/g, "")
           };
         });
       }
@@ -2201,14 +2301,15 @@
       const tokens = query.split(" ");
       let visibleCount = 0;
 
-      sectionSearchIndex.forEach(({ element, haystack }) => {
-        const visible = tokens.every((token) => haystack.includes(token));
+      const matches = new Set();
+      sectionSearchIndex.forEach(({ element, haystack, compactTitle }) => {
+        const visible = tokens.every((token) => haystack.includes(token)) || compactTitle.includes(query.replace(/\s+/g, ""));
         element.hidden = !visible;
-        if (visible) visibleCount += 1;
+        if (visible) { visibleCount += 1; matches.add(element.id); }
       });
 
-      navSearchIndex.forEach(({ element, haystack }) => {
-        element.hidden = !tokens.every((token) => haystack.includes(token));
+      navSearchIndex.forEach(({ element }) => {
+        element.hidden = !matches.has(element.dataset.target);
       });
 
       calculatorGroups.forEach((group) => {
@@ -2222,6 +2323,7 @@
       });
 
       if (emptySearch) emptySearch.hidden = visibleCount !== 0;
+      announce("Найдено калькуляторов: " + visibleCount + ".");
     }
 
     function resetSearchFiltering() {
@@ -2256,8 +2358,6 @@
 
     function selectSearchSuggestion(item) {
       if (!item) return;
-
-      resetSearchFiltering();
       if (mobileSearch) mobileSearch.value = "";
       if (mobileSearchSuggestions) {
         mobileSearchSuggestions.hidden = true;
@@ -2267,18 +2367,7 @@
 
       closeMobileSearch(false);
 
-      navButtons.forEach((button) => {
-        button.classList.toggle("active", button.dataset.target === item.target);
-      });
-
-      const target = document.getElementById(item.target);
-      if (target) {
-        requestAnimationFrame(() => {
-          target.setAttribute("tabindex", "-1");
-          target.scrollIntoView({ behavior: preferredScrollBehavior(), block: "start" });
-          target.focus({ preventScroll: true });
-        });
-      }
+      navigateToCalculator(item.target);
     }
 
     function renderMobileSuggestions(rawValue) {
@@ -2383,6 +2472,16 @@
       cancelAnimationFrame(desktopSearchFrame);
       desktopSearchFrame = requestAnimationFrame(() => applyDesktopSearchFilter(search.value));
     });
+    search?.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        resetSearchFiltering();
+      } else if (event.key === "Enter") {
+        event.preventDefault();
+        applyDesktopSearchFilter(search.value);
+        const first = sections.find(section => !section.hidden);
+        if (first) navigateToCalculator(first.id);
+      }
+    });
 
     mobileSearch?.addEventListener("input", () => {
       renderMobileSuggestions(mobileSearch.value);
@@ -2415,6 +2514,11 @@
     });
 
     document.addEventListener("keydown", (event) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        if (window.matchMedia("(max-width: 980px)").matches) openMobileSearch();
+        else search.focus();
+      }
       if (event.key === "Escape" && mobileSearchPanel && !mobileSearchPanel.hidden) {
         closeMobileSearch();
       }
@@ -2423,35 +2527,165 @@
     applyDesktopSearchFilter(search ? search.value : "");
 
 
-    function bindLinkedUnits(firstId, secondId, firstInputId, secondInputId) {
-      const first = document.getElementById(firstId);
-      const second = document.getElementById(secondId);
-      if (!first || !second) return;
-
-      const applyPlaceholders = () => {
-        const mgdl = first.value === "mgdl";
-        const firstInput = document.getElementById(firstInputId);
-        const secondInput = document.getElementById(secondInputId);
-        if (firstInput) firstInput.placeholder = mgdl ? "Например, 212" : "Например, 5,5";
-        if (secondInput) secondInput.placeholder = mgdl ? "Например, 50" : "Например, 1,3";
+    function bindCholesterolUnit(unitId, inputId, hdl = false) {
+      const unit = document.getElementById(unitId);
+      const input = document.getElementById(inputId);
+      let previousUnit = unit.value;
+      const placeholder = () => {
+        input.placeholder = unit.value === "mgdl" ? (hdl ? "Например, 50" : "Например, 212") : (hdl ? "Например, 1,3" : "Например, 5,5");
       };
-
-      first.addEventListener("change", () => {
-        second.value = first.value;
-        applyPlaceholders();
+      unit.addEventListener("change", () => {
+        const value = parseNumber(input.value);
+        if (unit.value !== previousUnit && input.value.trim()) {
+          if (Number.isFinite(value)) {
+            const mmol = cholesterolToMmol(value, previousUnit);
+            const converted = unit.value === "mmol" ? mmol : mmol / 0.02586;
+            input.value = String(Number(converted.toPrecision(8))).replace(".", ",");
+            announce("Значение холестерина переведено в " + (unit.value === "mmol" ? "ммоль/л." : "мг/дл."));
+          } else {
+            input.value = "";
+            announce("Введите значение заново в выбранных единицах.");
+          }
+        }
+        previousUnit = unit.value;
+        placeholder();
       });
-      second.addEventListener("change", () => {
-        first.value = second.value;
-        applyPlaceholders();
-      });
-      first.closest("form")?.addEventListener("reset", () => {
-        requestAnimationFrame(applyPlaceholders);
-      });
-      applyPlaceholders();
+      unit.closest("form").addEventListener("reset", () => requestAnimationFrame(() => {
+        previousUnit = unit.value;
+        placeholder();
+      }));
+      placeholder();
     }
 
-    bindLinkedUnits("score2TcUnit", "score2HdlUnit", "score2Tc", "score2Hdl");
-    bindLinkedUnits("preventTcUnit", "preventHdlUnit", "preventTc", "preventHdl");
+    ["score2", "prevent"].forEach((key) => {
+      bindCholesterolUnit(key + "TcUnit", key + "Tc");
+      bindCholesterolUnit(key + "HdlUnit", key + "Hdl", true);
+      const note = document.createElement("small");
+      note.className = "help unit-conversion-note";
+      note.textContent = "При смене единиц холестерина введённое значение пересчитывается автоматически.";
+      document.getElementById(key + "Form").querySelector(".field-grid").appendChild(note);
+    });
+
+    function navigateToCalculator(id, updateHash = true) {
+      const target = sections.find(section => section.id === id);
+      if (!target) return;
+      resetSearchFiltering();
+      closeMobileSearch(false);
+      if (updateHash && window.location.hash !== "#" + id) window.history.pushState(null, "", "#" + id);
+      navButtons.forEach(button => button.classList.toggle("active", button.dataset.target === id));
+      requestAnimationFrame(() => {
+        target.setAttribute("tabindex", "-1");
+        target.scrollIntoView({ behavior: "auto", block: "start" });
+        target.focus({ preventScroll: true });
+      });
+    }
+
+    const favoritesKey = "medical-calculators-favorites";
+    let favorites = new Set();
+    try {
+      const saved = JSON.parse(safeStorageGet(favoritesKey) || "[]");
+      if (Array.isArray(saved)) favorites = new Set(saved.filter(id => sections.some(section => section.id === id)));
+    } catch { /* Повреждённая настройка не мешает расчётам. */ }
+
+    function renderFavorites() {
+      const links = document.getElementById("favoriteLinks");
+      links.replaceChildren();
+      const ids = favorites.size ? [...favorites] : ["score2", "egfr", "bmi"];
+      document.querySelector(".quick-access-heading > span").textContent = favorites.size ? "Избранное" : "Быстрый доступ";
+      document.getElementById("favoritesHint").hidden = favorites.size > 0;
+      ids.forEach(id => {
+        const item = searchCatalog.find(item => item.target === id);
+        if (!item) return;
+        const link = document.createElement("a");
+        link.href = "#" + id;
+        link.textContent = item.title;
+        link.addEventListener("click", event => { event.preventDefault(); navigateToCalculator(id); });
+        links.appendChild(link);
+      });
+      document.querySelectorAll(".favorite-button").forEach(button => {
+        const selected = favorites.has(button.dataset.target);
+        button.setAttribute("aria-pressed", String(selected));
+        button.textContent = selected ? "★" : "☆";
+        button.setAttribute("aria-label", (selected ? "Убрать из избранного: " : "В избранное: ") + button.dataset.title);
+      });
+    }
+
+    sections.forEach(section => {
+      const heading = section.querySelector(".calc-heading");
+      const title = heading.querySelector("h2").textContent;
+      const copy = document.createElement("div");
+      copy.className = "heading-copy";
+      while (heading.firstChild) copy.appendChild(heading.firstChild);
+      const actions = document.createElement("div");
+      actions.className = "calc-tools";
+      const favorite = document.createElement("button");
+      favorite.type = "button";
+      favorite.className = "favorite-button";
+      favorite.dataset.target = section.id;
+      favorite.dataset.title = title;
+      favorite.title = "Избранное";
+      favorite.addEventListener("click", () => {
+        if (favorites.has(section.id)) favorites.delete(section.id);
+        else favorites.add(section.id);
+        safeStorageSet(favoritesKey, JSON.stringify([...favorites]));
+        renderFavorites();
+        announce(favorites.has(section.id) ? title + " добавлен в избранное." : title + " убран из избранного.");
+      });
+      const permalink = document.createElement("button");
+      permalink.type = "button";
+      permalink.className = "permalink-button";
+      permalink.textContent = "↗";
+      permalink.title = "Скопировать ссылку на калькулятор";
+      permalink.setAttribute("aria-label", "Скопировать ссылку: " + title);
+      permalink.addEventListener("click", () => {
+        const url = new URL(window.location.href);
+        url.search = "";
+        url.hash = section.id;
+        copyTextToClipboard(url.href, permalink);
+      });
+      actions.append(favorite, permalink);
+      heading.append(copy, actions);
+      section.querySelectorAll(".long-option-select").forEach(select => {
+        const preview = document.createElement("small");
+        preview.className = "selected-option-preview help";
+        const update = () => {
+          const text = select.selectedOptions[0]?.textContent || "";
+          preview.textContent = text;
+          preview.hidden = text.length < 48 || !select.value;
+        };
+        select.closest(".field")?.appendChild(preview);
+        select.addEventListener("change", update);
+        select.closest("form")?.addEventListener("reset", () => requestAnimationFrame(update));
+        update();
+      });
+    });
+    renderFavorites();
+
+    function followHash() {
+      let id;
+      try { id = decodeURIComponent(window.location.hash.slice(1)); } catch { return; }
+      if (calculators[id]) navigateToCalculator(id, false);
+    }
+    window.addEventListener("hashchange", followHash);
+    followHash();
+
+    document.querySelectorAll(".mobile-category-link").forEach(link => {
+      link.addEventListener("click", () => { resetSearchFiltering(); closeMobileSearch(false); });
+    });
+
+    const toTop = document.createElement("button");
+    toTop.type = "button";
+    toTop.className = "to-top";
+    toTop.textContent = "↑";
+    toTop.setAttribute("aria-label", "К поиску и избранному");
+    toTop.hidden = true;
+    toTop.addEventListener("click", () => {
+      window.scrollTo({ top: 0, behavior: preferredScrollBehavior() });
+      document.querySelector(".hero h1").setAttribute("tabindex", "-1");
+      document.querySelector(".hero h1").focus({ preventScroll: true });
+    });
+    document.body.appendChild(toTop);
+    window.addEventListener("scroll", () => { toTop.hidden = window.scrollY < 800; }, { passive: true });
 
     if ("IntersectionObserver" in window) {
       const observer = new IntersectionObserver((entries) => {

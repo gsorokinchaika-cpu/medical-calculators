@@ -5,7 +5,7 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1, viewport-fit=cover" name="viewport"/>
 <meta content="28 клинических калькуляторов и скрининговых шкал: сердечно-сосудистый риск, СКФ, электролиты, тромбоз, печень, сон и психическое здоровье." name="description"/>
-<meta content="#f6ead9" name="theme-color"/>
+<meta content="#f6f7f9" name="theme-color"/>
 <title>Медкалькуляторы — клинические шкалы и расчёты</title>
 <script>
   try {
@@ -14,10 +14,12 @@
     }
   } catch { /* Тема останется светлой, если хранилище недоступно. */ }
 </script>
-<link as="image" fetchpriority="high" href="assets/hero-5ccdde2e.jpg" rel="preload"/>
-<link href="assets/app-689aa9b0c7.css" rel="stylesheet"/>
+<link href="assets/app-c88a9aac79.css" rel="stylesheet"/>
 </head>
 <body>
+<noscript><p class="info-callout">Для расчётов необходим JavaScript. Включите его в браузере: без него результаты не вычисляются.</p></noscript>
+<a class="skip-link" href="#calculatorContent">К калькуляторам</a>
+<div class="sr-only" id="appStatus" role="status" aria-live="polite"></div>
 <div class="mobile-topbar"><div class="mobile-brand"><div aria-label="Аватар" class="mobile-avatar"><img alt="Аватар" src="assets/avatar-2fc3a937.jpg" width="320" height="320" decoding="async"/></div><span>Медкалькуляторы</span></div><div class="mobile-actions"><button aria-controls="mobileSearchPanel" aria-expanded="false" aria-label="Поиск калькулятора" class="icon-button mobile-search-button" id="mobileSearchToggle" type="button"><svg aria-hidden="true" viewbox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"></circle><path d="M15.5 15.5 21 21"></path></svg></button><button aria-label="Переключить тему" class="icon-button theme-toggle" type="button">◐</button></div></div><div class="mobile-search-panel" hidden="" id="mobileSearchPanel"><div class="mobile-search-inner"><span class="mobile-search-glyph"><svg aria-hidden="true" viewbox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"></circle><path d="M15.5 15.5 21 21"></path></svg></span><input aria-autocomplete="list" aria-controls="mobileSearchSuggestions" aria-expanded="false" aria-label="Поиск калькулятора" autocomplete="off" id="mobileCalculatorSearch" role="combobox" placeholder="Найти калькулятор" type="search"/><button aria-label="Закрыть поиск" class="mobile-search-close" id="mobileSearchClose" type="button">×</button></div><div class="mobile-search-hint">Начните вводить название или показатель.</div><div aria-label="Подходящие калькуляторы и опросники" class="mobile-search-suggestions" hidden="" id="mobileSearchSuggestions" role="listbox"></div></div>
 <div class="app-shell">
 <div class="app">
@@ -26,7 +28,7 @@
 <div aria-hidden="true" class="brand-logo"></div>
 <div>
 <strong>Медкалькуляторы</strong>
-<small>Клинические расчёты · v3.5</small>
+<small>Клинические расчёты · v3.6</small>
 </div>
 </div>
 <div class="search-wrap">
@@ -142,19 +144,16 @@
 <button class="utility-button" id="resetAll" type="button">↺  Очистить всё</button>
 </div>
 </aside>
-<main class="content">
+<main class="content" id="top">
 <section class="hero">
 <div class="hero-copy">
-<h1>Выберите расчёт</h1>
-<p>Поиск по названию или клиническому разделу.</p>
+<span class="hero-eyebrow">В помощь клинической практике</span>
+<h1>Нужный расчёт — под рукой</h1>
+<p>Найдите калькулятор по названию или показателю.</p>
 </div>
-<div aria-hidden="true" class="hero-art">
-<div class="floating-calc hybrid-orb"></div>
-<div class="floating-heart hybrid-orb"></div>
-<div class="floating-flask hybrid-orb"></div>
-<div class="hero-illustration">
-<img alt="Иллюстрация с мужчиной и калькулятором" src="assets/hero-5ccdde2e.jpg" width="1200" height="800" decoding="async" fetchpriority="high"/>
-</div>
+<div class="quick-access" aria-label="Избранные калькуляторы">
+<div class="quick-access-heading"><span>Избранное</span><small id="favoritesHint">Отметьте нужные калькуляторы звёздочкой</small></div>
+<div class="quick-links" id="favoriteLinks"></div>
 </div>
 </section><nav aria-label="Разделы калькуляторов" class="mobile-category-nav"><a class="mobile-category-link" href="#group-cardiovascular"><span>♥</span><strong>Сердце и сосуды</strong></a><a class="mobile-category-link" href="#group-acute"><span>+</span><strong>Острые состояния</strong></a><a class="mobile-category-link" href="#group-laboratory"><span>∑</span><strong>Лаборатория</strong></a><a class="mobile-category-link" href="#group-liver"><span>L</span><strong>Печень</strong></a><a class="mobile-category-link" href="#group-sleep"><span>☾</span><strong>Сон</strong></a><a class="mobile-category-link" href="#group-bone"><span>◇</span><strong>Кости</strong></a><a class="mobile-category-link" href="#group-mental"><span>Ψ</span><strong>Психика и когниция</strong></a></nav>
 <div class="calculator-grid" id="calculatorContent"><section class="calculator-group" data-category="cardiovascular" id="group-cardiovascular"><header class="calculator-group-header"><span class="calculator-group-icon">♥</span><div class="calculator-group-copy"><span class="calculator-group-kicker">Клинический раздел</span><h2>Сердечно-сосудистая система</h2><p>Профилактический риск, фибрилляция предсердий и электрокардиография.</p></div><span class="calculator-group-count">9</span></header><div class="calculator-group-grid"><section class="calculator" data-search="score2 score 2 сердечно сосудистый риск европа холестерин" data-tone="sky" id="score2">
@@ -174,6 +173,19 @@
 </div>
 <form id="score2Form" novalidate="">
 <div class="field-grid">
+<div class="field full">
+<label for="score2Eligibility">Применимость SCORE2</label>
+<div class="control-row"><select id="score2Eligibility" class="long-option-select">
+<option value="" disabled="" selected="">Выберите клиническую ситуацию</option>
+<option value="eligible">Нет перечисленных ниже состояний</option>
+<option value="cvd">Установленное сердечно-сосудистое заболевание</option>
+<option value="diabetes">Сахарный диабет</option>
+<option value="ckd">Хроническая болезнь почек</option>
+<option value="fh">Семейная гиперхолестеринемия / генетические нарушения липидов или АД</option>
+<option value="pregnancy">Беременность</option>
+</select></div>
+<small class="help">SCORE2 применяют в возрасте 40–69 лет без ССЗ, диабета, ХБП, генетических нарушений липидов/АД и вне беременности.</small>
+</div>
 <div class="field">
 <label for="score2Age">Возраст</label>
 <div class="control-row">
@@ -198,11 +210,21 @@
 <div class="field">
 <label>Курение сейчас</label>
 <div class="segmented">
-<label><input checked="" name="score2Smoking" type="radio" value="0"/><span>Нет</span></label>
+<label><input name="score2Smoking" type="radio" value="0"/><span>Нет</span></label>
 <label><input name="score2Smoking" type="radio" value="1"/><span>Да</span></label>
 </div>
 </div>
 <div class="field">
+<label for="score2Country">Страна для калибровки</label>
+<div class="control-row"><select id="score2Country" class="long-option-select"><option value="" disabled="" selected="">Выберите страну</option></select></div>
+<small class="help" id="score2RegionHint">Регион риска определяется по стране.</small>
+</div>
+<div class="field">
+<label for="score2Guideline">Интерпретация</label>
+<div class="control-row"><select id="score2Guideline" class="long-option-select"><option value="prevention2021">Профилактика · ESC 2021</option><option value="lipids2025">Липиды · ESC/EAS 2025</option></select></div>
+<small class="help">Меняет категорию риска, но не рассчитанный процент.</small>
+</div>
+<div class="field full" id="score2ManualRegion" hidden="">
 <label for="score2Region">Регион риска</label>
 <div class="control-row">
 <select aria-label="Регион риска" id="score2Region" style="width:100%; border-left:0">
@@ -213,6 +235,7 @@
 <option value="veryHigh">Очень высокий</option>
 </select>
 </div>
+<small class="help">Выбирайте вручную только при известной применимой калибровке. Для стран вне перечня ESC модель может не подходить.</small>
 </div>
 <div class="field">
 <label for="score2Tc">Общий холестерин</label>
@@ -242,7 +265,7 @@
 </div>
 <div class="result-interpretation" id="score2Interpretation">Введите данные пациента.</div>
 </div>
-<p class="result-note" id="score2Note">Для людей 40–69 лет без установленного ССЗ и сахарного диабета. Для ≥70 лет требуется SCORE2-OP.</p>
+<p class="result-note" id="score2Note">Для возраста 40–69 лет при соблюдении условий применимости. С 70 лет используйте SCORE2-OP.</p>
 <button class="copy-button" data-copy="score2" disabled="" type="button">Копировать результат</button>
 </div>
 </div>
@@ -251,10 +274,12 @@
 <summary>Применимость и интерпретация</summary>
 <p>SCORE2 оценивает 10-летний риск первого фатального или нефатального сердечно-сосудистого события. Используются возраст, пол, курение, систолическое АД, общий холестерин, ЛПВП и региональная калибровка.</p>
 <ul>
-<li>До 50 лет: низкий–умеренный &lt;2,5%; высокий 2,5–&lt;7,5%; очень высокий ≥7,5%.</li>
-<li>50–69 лет: низкий–умеренный &lt;5%; высокий 5–&lt;10%; очень высокий ≥10%.</li>
-<li>Не применять при установленном ССЗ или сахарном диабете.</li>
+<li>ESC 2021, профилактика: до 50 лет пороги 2,5% и 7,5%; в 50–69 лет — 5% и 10%.</li>
+<li>ESC/EAS 2025, липиды: низкий &lt;2%; умеренный 2–&lt;10%; высокий 10–&lt;20%; очень высокий ≥20%.</li>
+<li>Россия — регион очень высокого риска. Это калибровка страны, а не индивидуальная категория пациента.</li>
+<li>Вводятся общий холестерин и ЛПВП отдельно. Не-ЛПВП = общий холестерин − ЛПВП. Табличная оценка с округлёнными данными может отличаться.</li>
 </ul>
+<p class="source-links">Источники: <a href="https://doi.org/10.1093/eurheartj/ehab761" target="_blank" rel="noopener noreferrer">формула SCORE2</a> · <a href="https://doi.org/10.1093/eurheartj/ehab484" target="_blank" rel="noopener noreferrer">ESC 2021</a> · <a href="https://eas-society.org/publications/guidelines/score2-score2-op/" target="_blank" rel="noopener noreferrer">ESC/EAS 2025</a>.</p>
 </details>
 </section><section class="calculator" data-search="prevent aha сердечно сосудистый риск ascvd сердечная недостаточность" data-tone="rose" id="prevent">
 <div class="calc-card">
@@ -1284,7 +1309,8 @@
 </div>
 <details>
 <summary>Формула и пороги</summary>
-<p>Возраст × АСТ / (тромбоциты × √АЛТ). Для 35–64 лет: &lt;1,3 — низкий риск; 1,3–2,67 — промежуточный; &gt;2,67 — высокий. После 65 лет нижний порог — 2,0.</p>
+<p>Возраст × АСТ / (тромбоциты × √АЛТ). Для 35–65 лет: &lt;1,3 — низкий риск; 1,3–2,67 — промежуточный; &gt;2,67 — высокий. В возрасте &gt;65 лет нижний порог — 2,0. До 35 лет точность недостаточна для надёжного определения категории.</p>
+<p>Источник: <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC10735173/" target="_blank" rel="noopener noreferrer">AASLD Practice Guidance 2023</a>. Не используйте FIB-4 для оценки фиброза при остром заболевании.</p>
 </details>
 </section><section class="calculator" data-search="maf 5 metabolic fibrosis waist bmi" data-tone="berry" id="maf5">
 <div class="calc-card">
@@ -1970,6 +1996,7 @@
 </section></div></section></div>
 <div class="empty-search" hidden="" id="emptySearch">По этому запросу калькуляторы не найдены.</div>
 <footer class="footer">
+<p>Избранное и тема сохраняются только на этом устройстве. Данные расчётов не сохраняются и не включаются в ссылки на калькуляторы.</p>
 <strong>Важно:</strong> проверьте исходные данные, единицы измерения и применимость формулы. Приложение не заменяет клиническое решение.
 <details class="source-details">
 <summary>Источники и ограничения</summary>
@@ -1998,6 +2025,6 @@
 </main>
 </div>
 </div>
-<script defer="" src="assets/app-7739465194.js"></script>
+<script defer="" src="assets/app-8d35e15ebc.js"></script>
 </body>
 </html>
