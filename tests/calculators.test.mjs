@@ -27,6 +27,10 @@ class FakeElement {
     this.hidden = false;
     this.dataset = {};
   }
+  closest(selector) {
+    if (selector === ".result-box" && this.id.startsWith("copy-")) return getElement("box-" + this.id.slice(5));
+    return null;
+  }
 }
 
 const elements = new Map();
@@ -712,4 +716,18 @@ test("новый пациент: отмена сохраняет данные; �
   vm.runInContext("startNewPatient()",c); assert.equal(resets,0);
   consent=true; vm.runInContext("startNewPatient()",c); assert.equal(resets,1);
   assert.match(announced,/очищены/);
+});
+
+test("результат виден только после успешного расчёта; ошибка сохраняет предупреждение", () => {
+  setValues({ bmiWeight: 70, bmiHeight: 170, bmiWeightUnit: "kg", bmiHeightUnit: "cm" });
+  assert.equal(app.calculateBmi(), true);
+  assert.equal(getElement("box-bmi").dataset.ready, "true");
+  assert.equal(getElement("copy-bmi").disabled, false);
+  setValues({ bmiWeight: "" });
+  assert.equal(app.calculateBmi(), false);
+  assert.equal(getElement("box-bmi").dataset.ready, "false");
+  assert.equal(getElement("copy-bmi").disabled, true);
+  assert.equal(getElement("bmiResult").textContent, "—");
+  assert.match(getElement("bmiNote").textContent, /скрининговой/);
+  assert.ok(getElement("bmiError").textContent);
 });

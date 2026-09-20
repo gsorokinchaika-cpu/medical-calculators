@@ -14,7 +14,7 @@
     }
   } catch { /* Тема останется светлой, если хранилище недоступно. */ }
 </script>
-<link href="assets/app-55c4c0f4b4.css" rel="stylesheet"/>
+<link href="assets/app-898b618b92.css" rel="stylesheet"/>
 <link href="assets/avatar-2fc3a937.jpg" rel="icon" type="image/jpeg"/>
 </head>
 <body>
@@ -26,7 +26,7 @@
 <div class="brand">
 <div aria-hidden="true" class="brand-logo"></div><div>
 <strong>Медкалькуляторы</strong>
-<small>Клинические расчёты · v3.7</small>
+<small>Клинические расчёты</small>
 </div></div><div class="search-wrap">
 <input aria-label="Поиск калькулятора" autocomplete="off" class="search" id="calculatorSearch" placeholder="Поиск калькулятора" type="search"/>
 </div>
@@ -141,14 +141,12 @@
 </div>
 </aside>
 <main class="content" id="top">
-<div class="release-bar"><span>v3.7 · <time datetime="2026-09-19">19.09.2026</time></span><span id="offlineStatus" role="status">Офлайн-копия ещё не готова</span><button id="appUpdate" type="button" hidden>Обновить приложение</button></div><section class="hero">
-<div class="hero-copy">
-<span class="hero-eyebrow">В помощь клинической практике</span>
-<h1>Нужный расчёт — под рукой</h1>
-<p>Найдите калькулятор по названию или показателю.</p>
-</div><div class="quick-access" aria-label="Избранные калькуляторы">
-<div class="quick-access-heading"><span>Избранное</span><small id="favoritesHint">Отметьте нужные калькуляторы звёздочкой</small></div><div class="quick-links" id="favoriteLinks"></div></div>
-<details class="patient-panel" id="patientPanel"><summary>Общие данные пациента <span>Необязательно · только на время работы</span></summary>
+<section class="hero">
+<h1 class="sr-only">Медкалькуляторы</h1>
+<div class="quick-access" aria-label="Избранные калькуляторы">
+<div class="quick-access-heading"><span>Избранное</span></div><div class="quick-links" id="favoriteLinks"></div></div>
+<div class="workspace-tools">
+<details class="patient-panel" id="patientPanel"><summary>Данные пациента</summary>
 <form id="sharedForm" autocomplete="off" novalidate>
 <p class="help">Для одного пациента. Перенос по кнопке, только в пустые поля; применимость каждой шкалы подтвердите отдельно. Данные исчезнут при перезагрузке страницы.</p>
 <div class="field-grid">
@@ -156,6 +154,12 @@
 <p id="sharedStatus" class="help" role="status"></p>
 </form>
 </details>
+<details class="app-info" id="appInfo"><summary>О приложении</summary>
+<div class="release-bar"><span>v3.7.1 · <time datetime="2026-09-20">20.09.2026</time></span><span id="offlineStatus" role="status">Офлайн-копия ещё не готова</span></div>
+<p>Тема, избранное и файлы для офлайн-работы сохраняются на этом устройстве. Данные пациента и результаты не записываются в хранилище и не включаются в ссылки; при перезагрузке они исчезнут. Внешние источники и официальный FRAX требуют интернет.</p>
+</details>
+<button id="appUpdate" class="update-button" type="button" hidden>Доступна новая версия · Обновить</button>
+</div>
 </section><nav aria-label="Разделы калькуляторов" class="mobile-category-nav"><a class="mobile-category-link" href="#group-cardiovascular"><span>♥</span><strong>Сердце и сосуды</strong></a><a class="mobile-category-link" href="#group-acute"><span>+</span><strong>Острые состояния</strong></a><a class="mobile-category-link" href="#group-laboratory"><span>∑</span><strong>Лаборатория</strong></a><a class="mobile-category-link" href="#group-liver"><span>L</span><strong>Печень</strong></a><a class="mobile-category-link" href="#group-sleep"><span>☾</span><strong>Сон</strong></a><a class="mobile-category-link" href="#group-bone"><span>◇</span><strong>Кости</strong></a><a class="mobile-category-link" href="#group-mental"><span>Ψ</span><strong>Психика и когниция</strong></a></nav>
 <div class="calculator-grid" id="calculatorContent"><section class="calculator-group" data-category="cardiovascular" id="group-cardiovascular"><header class="calculator-group-header"><span class="calculator-group-icon">♥</span><div class="calculator-group-copy"><span class="calculator-group-kicker">Клинический раздел</span><h2>Сердечно-сосудистая система</h2><p>Профилактический риск, фибрилляция предсердий и электрокардиография.</p></div><span class="calculator-group-count">11</span></header><div class="calculator-group-grid"><section class="calculator" data-search="score2 score 2 сердечно сосудистый риск европа холестерин" data-tone="sky" id="score2">
 <div class="calc-card">
@@ -399,7 +403,7 @@
 <label for="score2diabetesHdl">Холестерин ЛПВП</label>
 <div class="control-row">
 <input aria-describedby="score2diabetesError" id="score2diabetesHdl" inputmode="decimal" placeholder="Например, 1,3"/>
-<select aria-label="Единица холестерина ЛПВП" id="score2diabetesHdlUnit"><option selected value="mmol">ммоль/л</option><option value="mgdl">мг/дл</option></select></div></div><div class="field"><label for="score2diabetesDiagnosisAge">Возраст диагностики СД 2 типа</label><div class="control-row"><input id="score2diabetesDiagnosisAge" inputmode="decimal" placeholder="Не старше текущего возраста" aria-describedby="score2diabetesError"/><span class="unit-static">лет</span></div><small class="help">По креатинину, как в авторской модели. Не переносится из общих данных CKD-EPI 2021.</small></div><div class="field"><label for="score2diabetesHba1c">Гликированный гемоглобин HbA1c</label><div class="control-row"><input id="score2diabetesHba1c" inputmode="decimal" placeholder="Например, 7" aria-describedby="score2diabetesError"/><select id="score2diabetesHba1cUnit" aria-label="Единица HbA1c"><option value="percent">%</option><option value="ifcc">ммоль/моль</option></select></div></div><div class="field"><label for="score2diabetesEgfr">СКФ CKD-EPI 2009</label><div class="control-row"><input id="score2diabetesEgfr" inputmode="decimal" placeholder="Например, 90" aria-describedby="score2diabetesError"/><span class="unit-static">мл/мин/1,73 м²</span></div></div><div class="field"><label for="score2diabetesUacrCategory">Альбумин / креатинин мочи (UACR)</label><div class="control-row"><select id="score2diabetesUacrCategory" class="long-option-select"><option value="" selected disabled>Выберите категорию</option><option value="a1">A1: &lt;30 мг/г (&lt;3 мг/ммоль)</option><option value="a2">A2: 30–300 мг/г (3–30 мг/ммоль)</option><option value="a3">A3: &gt;300 мг/г (&gt;30 мг/ммоль)</option></select></div><small class="help">Для проверки применимости, не входит в формулу риска.</small></div></div><div class="error" id="score2diabetesError" role="alert"></div><div class="actions">
+<select aria-label="Единица холестерина ЛПВП" id="score2diabetesHdlUnit"><option selected value="mmol">ммоль/л</option><option value="mgdl">мг/дл</option></select></div></div><div class="field"><label for="score2diabetesDiagnosisAge">Возраст диагностики СД 2 типа</label><div class="control-row"><input id="score2diabetesDiagnosisAge" inputmode="decimal" placeholder="Не старше текущего возраста" aria-describedby="score2diabetesError"/><span class="unit-static">лет</span></div></div><div class="field"><label for="score2diabetesHba1c">Гликированный гемоглобин HbA1c</label><div class="control-row"><input id="score2diabetesHba1c" inputmode="decimal" placeholder="Например, 7" aria-describedby="score2diabetesError"/><select id="score2diabetesHba1cUnit" aria-label="Единица HbA1c"><option value="percent">%</option><option value="ifcc">ммоль/моль</option></select></div></div><div class="field"><label for="score2diabetesEgfr">СКФ CKD-EPI 2009</label><div class="control-row"><input id="score2diabetesEgfr" inputmode="decimal" placeholder="Например, 90" aria-describedby="score2diabetesError"/><span class="unit-static">мл/мин/1,73 м²</span></div><small class="help">По креатинину, как в авторской модели. Не переносится из общих данных CKD-EPI 2021.</small></div><div class="field"><label for="score2diabetesUacrCategory">Альбумин / креатинин мочи (UACR)</label><div class="control-row"><select id="score2diabetesUacrCategory" class="long-option-select"><option value="" selected disabled>Выберите категорию</option><option value="a1">A1: &lt;30 мг/г (&lt;3 мг/ммоль)</option><option value="a2">A2: 30–300 мг/г (3–30 мг/ммоль)</option><option value="a3">A3: &gt;300 мг/г (&gt;30 мг/ммоль)</option></select></div><small class="help">Для проверки применимости, не входит в формулу риска.</small></div></div><div class="error" id="score2diabetesError" role="alert"></div><div class="actions">
 <button class="primary" type="submit">Рассчитать</button>
 <button class="secondary reset-card" data-form="score2diabetesForm" type="button">Очистить</button>
 </div></form>
@@ -1656,7 +1660,6 @@
 </details>
 </section></div></section></div><div class="empty-search" hidden id="emptySearch">По этому запросу калькуляторы не найдены.</div>
 <footer class="footer">
-<p>Тема, избранное и файлы для офлайн-работы сохраняются на этом устройстве. Данные пациента и результаты не записываются в хранилище и не включаются в ссылки; при перезагрузке они исчезнут. Внешние источники и официальный FRAX требуют интернет.</p>
 <strong>Важно:</strong> проверьте исходные данные, единицы измерения и применимость формулы. Приложение не заменяет клиническое решение.
 <details class="source-details">
 <summary>Источники и ограничения</summary>
@@ -1685,6 +1688,6 @@
 </footer><section aria-label="Сообщить об ошибке" class="feedback-block"><div class="feedback-icon">!</div><div class="feedback-copy"><strong>Нашли ошибку?</strong><p>Напишите в Telegram <a href="https://t.me/NikorosBelg" rel="noopener noreferrer" target="_blank">@NikorosBelg</a> или на почту <a href="mailto:g.sorokin.chaika@gmail.com">g.sorokin.chaika@gmail.com</a>.</p></div></section>
 </main>
 </div></div>
-<script defer="" src="assets/app-7a53f8f987.js"></script>
+<script defer="" src="assets/app-4b9ae28dd8.js"></script>
 </body>
 </html>

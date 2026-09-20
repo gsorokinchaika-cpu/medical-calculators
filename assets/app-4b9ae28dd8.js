@@ -1,5 +1,5 @@
 "use strict";
-// v3.7: семейство SCORE2, общие данные только в памяти, офлайн-оболочка.
+// v3.7.1: компактный интерфейс; математические модели без изменений.
 
     const state = {
       results: {
@@ -48,6 +48,7 @@
 
       state.results[key] = copyText || null;
       copyButton.disabled = !copyText;
+      copyButton.closest(".result-box").dataset.ready = copyText ? "true" : "false";
     }
 
     function setError(key, message) {
@@ -2895,7 +2896,6 @@
       links.replaceChildren();
       const ids = favorites.size ? [...favorites] : ["score2", "egfr", "bmi"];
       document.querySelector(".quick-access-heading > span").textContent = favorites.size ? "Избранное" : "Быстрый доступ";
-      document.getElementById("favoritesHint").hidden = favorites.size > 0;
       ids.forEach(id => {
         const item = searchCatalog.find(item => item.target === id);
         if (!item) return;

@@ -113,14 +113,9 @@ button, a, input, select, summary { -webkit-tap-highlight-color: transparent; }
 .sidebar-footer { display: grid; gap: 6px; padding-top: 12px; border-top: 1px solid var(--line); }
 .utility-button { min-height: 38px; padding: 8px 10px; text-align: left; border: 0; border-radius: 9px; background: transparent; font-size: 13px; color: var(--muted); }
 .utility-button:hover { background: var(--paper-2); color: var(--text); }
-.hero { padding: 14px 4px 24px; }
-.hero-eyebrow { display: block; color: var(--accent); font-size: 12px; font-weight: 650; margin-bottom: 8px; }
-.hero h1 { margin: 0; font-size: clamp(25px, 3vw, 38px); line-height: 1.16; font-weight: 700; letter-spacing: -1.3px; }
-.hero p { margin: 10px 0 0; color: var(--muted); font-size: 14px; }
-.quick-access { margin-top: 24px; }
-.quick-access-heading { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 14px; margin-bottom: 10px; }
+.hero { padding: 0 4px 12px; }
+.quick-access-heading { margin-bottom: 6px; }
 .quick-access-heading > span { font-size: 12px; font-weight: 700; }
-.quick-access-heading small { color: var(--muted); font-size: 11px; }
 .quick-links { display: flex; flex-wrap: wrap; gap: 8px; }
 .quick-links a { min-height: 40px; display: inline-flex; align-items: center; padding: 8px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); text-decoration: none; font-size: 13px; font-weight: 600; }
 .quick-links a:hover { border-color: var(--accent); background: var(--accent-soft); }
@@ -178,6 +173,10 @@ select option { background: var(--paper); color: var(--text); }
 .secondary:hover, .copy-button:not(:disabled):hover { background: var(--accent-soft); }
 .external-tool-link { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
 .result-box { margin-top: 24px; padding: 20px; border: 1px solid var(--line); border-radius: 12px; background: var(--accent-soft); }
+/* Empty outputs disappear, but clinical notes remain visible before calculation. */
+.result-box:not([data-ready="true"]) { margin-top: 14px; padding: 0; border: 0; border-radius: 0; background: transparent; }
+.result-box:not([data-ready="true"]) > :not(.result-note) { display: none; }
+.result-box:not([data-ready="true"]) > .result-note { margin: 0; }
 .result-row { display: grid; grid-template-columns: minmax(110px, .4fr) minmax(0, 1fr); gap: 20px; align-items: center; }
 .result-label { color: var(--muted); font-size: 11px; font-weight: 650; letter-spacing: .02em; }
 .result-number { display: inline; font-size: 40px; font-weight: 700; letter-spacing: -1.5px; font-variant-numeric: tabular-nums; line-height: 1.3; overflow-wrap: anywhere; }
@@ -275,12 +274,6 @@ details ul { padding-left: 20px; }
 }
 @media (max-width: 600px) {
   .app { padding-left: calc(12px + var(--safe-left)); padding-right: calc(12px + var(--safe-right)); }
-  .hero { padding: 0 4px 18px; }
-  .hero-eyebrow { display: none; }
-  .hero h1 { font-size: 27px; letter-spacing: -.8px; max-width: 350px; }
-  .hero p { font-size: 13px; max-width: 330px; }
-  .quick-access { margin-top: 18px; }
-  .quick-access-heading { gap: 3px; display: grid; }
   .quick-links { gap: 6px; }
   .quick-links a { font-size: 12px; padding: 8px 11px; }
   .calculator { padding: 18px 16px; border-radius: 15px; }
@@ -328,12 +321,14 @@ details ul { padding-left: 20px; }
   .calculator { box-shadow: none; break-inside: avoid; margin-bottom: 20px; }
   .calculator-grid, .calculator-group-grid { display: block; }
 }
-.release-bar { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; color: var(--muted); font-size: 11px; margin: 0 0 16px; }
-.release-bar button { color: var(--accent); background: var(--paper); border: 1px solid var(--line); border-radius: 7px; padding: 8px 12px; cursor: pointer; font: inherit; }
-.patient-panel { grid-column: 1 / -1; width: 100%; margin: 16px 0 0; padding: 0; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); }
-.patient-panel > summary { padding: 16px; font-size: 14px; }
-.patient-panel > summary span { display: block; font-size: 11px; color: var(--muted); font-weight: 400; margin-top: 4px; }
-.patient-panel > form { padding: 0 16px 16px; }
+.workspace-tools { display: flex; flex-wrap: wrap; align-items: start; gap: 0 24px; margin-top: 8px; }
+.workspace-tools > details { min-width: 0; margin: 0; border: 0; }
+.workspace-tools > details > summary { min-height: 44px; padding: 11px 0; font-size: 13px; }
+.workspace-tools > details[open] { flex: 1 0 100%; padding: 0 14px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); margin-bottom: 6px; }
+.release-bar { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; color: var(--muted); font-size: 12px; }
+.app-info p { margin: 10px 0 0; font-size: 12px; }
+.update-button { min-height: 44px; color: var(--accent); background: var(--accent-soft); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; font-size: 13px; }
+.patient-panel > form { padding: 0; }
 .patient-panel .field-grid { margin-top: 16px; }
 .patient-panel .help { line-height: 1.5; }
 .patient-panel #sharedStatus:empty { display: none; }
