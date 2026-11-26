@@ -1,5 +1,5 @@
 "use strict";
-// v3.7.1: компактный интерфейс; математические модели без изменений.
+// v3.8.0: гериатрические шкалы; прежние математические модели без изменений.
 
     const state = {
       results: {
@@ -8,7 +8,7 @@
         hasbled: null, grace: null, precisedapt: null, qtc: null, vte: null,
         pneumonia: null, sorethroat: null, electrolytes: null, fib4: null,
         maf5: null, liverpro: null, adapt: null, stopbang: null, epworth: null,
-        frax: null, phq9: null, gad7: null, mmse: null
+        frax: null, phq9: null, gad7: null, mmse: null, barthel: null, mna: null
       }
     };
 
@@ -64,6 +64,8 @@
 
     function clearResult(key, message) {
       const defaultNotes = {
+        barthel: Geriatrics.notes.barthel,
+        mna: Geriatrics.notes.mna,
         bmi: "Категории предназначены для скрининговой оценки взрослых и не отражают состав тела.",
         egfr: "Одно значение СКФ не устанавливает диагноз ХБП. Важны повторные измерения, длительность изменений и альбуминурия.",
         mentzer: "Это ориентир при микроцитозе, а не самостоятельный диагностический тест.",
@@ -1958,6 +1960,8 @@
     }
 
     const calculators = {
+      barthel: () => Geriatrics.calculateBarthel({ setError, setResult }),
+      mna: () => Geriatrics.calculateMna({ setError, setResult, parseNumber }),
       bmi: calculateBmi,
       egfr: calculateEgfr,
       mentzer: calculateMentzer,
@@ -1989,6 +1993,8 @@
       frax: calculateFrax,
       egfrcys: calculateEgfrcys
     };
+
+    Geriatrics.mount();
 
     ["score2", "score2op", "score2diabetes"].forEach(key => {
     const score2CountrySelect = document.getElementById(key + "Country");
@@ -2068,6 +2074,8 @@
         }
 
         const prompts = {
+          barthel: "Ответьте на все 10 пунктов.",
+          mna: "Перенесите баллы A–E и заполните пункт F.",
           bmi: "Введите массу тела и рост.",
           egfr: "Введите возраст, пол и креатинин.",
           mentzer: "Введите MCV и число эритроцитов.",
@@ -2227,6 +2235,8 @@
       clearResult("phq9", "Ответьте на 9 вопросов.");
       clearResult("gad7", "Ответьте на 7 вопросов.");
       clearResult("mmse", "Отметьте правильно выполненные задания.");
+      clearResult("barthel", "Ответьте на все 10 пунктов.");
+      clearResult("mna", "Перенесите баллы A–E и заполните пункт F.");
       clearResult("fib4", "Введите возраст, АСТ, АЛТ и тромбоциты.");
       clearResult("maf5", "Введите антропометрию и лабораторные данные.");
       clearResult("liverpro", "Введите результат из сертифицированной системы.");
@@ -2821,7 +2831,7 @@
 
     // Explicit, optional transfer. No patient data is written to storage or URLs.
     const sharedTargets = {
-      Age: ["score2Age", "score2opAge", "score2diabetesAge", "preventAge", "cadAge", "afAge", "hasbledAge", "graceAge", "pdAge", "vtePercAge", "vteDdimAge", "pneuAge", "soreAge", "egfrAge", "egfrcysAge", "fib4Age", "adaptAge", "fraxAge"],
+      Age: ["score2Age", "score2opAge", "score2diabetesAge", "preventAge", "cadAge", "afAge", "hasbledAge", "graceAge", "pdAge", "vtePercAge", "vteDdimAge", "pneuAge", "soreAge", "egfrAge", "egfrcysAge", "fib4Age", "adaptAge", "fraxAge", "mnaAge"],
       Sex: ["score2Sex", "score2opSex", "score2diabetesSex", "preventSex", "cadSex", "afSex", "qtcSex", "egfrSex", "egfrcysSex", "fraxSex"],
       Smoking: ["score2Smoking", "score2opSmoking", "score2diabetesSmoking", "preventSmoking"],
       Sbp: ["score2Sbp", "score2opSbp", "score2diabetesSbp", "preventSbp", "graceSbp", "pneuSbp"],

@@ -15,7 +15,7 @@ test("компактный верх: служебная информация с�
   const about = hero.match(/<details class="app-info" id="appInfo">([\s\S]*?)<\/details>/)?.[1];
   assert.ok(about);
   assert.match(about, /id="offlineStatus"/);
-  assert.match(about, /<time datetime="2026-09-20">/);
+  assert.match(about, /<time datetime="2026-11-26">/);
   assert.doesNotMatch(about, /id="appUpdate"/);
   assert.match(hero, /<button id="appUpdate"[^>]*\bhidden>/);
 });

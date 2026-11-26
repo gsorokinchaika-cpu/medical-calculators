@@ -36,9 +36,9 @@ function worker({ failInstall = false } = {}) {
   return { dispatch,stores,requested,removed,stats:()=>({claimed,skipped,networkCalls}) };
 }
 
-test("офлайн: в кэше только четыре локальных файла текущей сборки", async () => {
+test("офлайн: в кэше только пять локальных файлов текущей сборки", async () => {
   const w=worker(); await w.dispatch("install");
-  assert.equal(w.requested.length,4);
+  assert.equal(w.requested.length,5);
   for (const request of w.requested) {
     assert.equal(request.cache,"reload");
     const path=new URL(request.url).pathname.replace("/medical-calculators/","");
@@ -61,7 +61,7 @@ test("офлайн: навигация с query и якорем возвраща
     assert.equal(await w.dispatch("fetch", { request:{method:"GET",mode:"navigate",url} }),"cached:"+scope+"index.html");
   }
   assert.equal(w.stats().networkCalls,0);
-  assert.equal([...w.stores.values()][0].size,4);
+  assert.equal([...w.stores.values()][0].size,5);
 });
 
 test("офлайн: внешние запросы, API, POST и чужие страницы не перехватываются", async () => {

@@ -17,6 +17,6 @@ jobs:
           node-version: '22'
       - name: Syntax and regression tests
         run: |
-          node --check assets/app-4b9ae28dd8.js
+          for script in assets/*.js; do node --check "$script"; done
           node --check sw.js
           node --test tests/*.test.mjs

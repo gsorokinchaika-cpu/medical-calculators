@@ -1,11 +1,11 @@
 "use strict";
 
 // Only public app files. Never cache form values, results, clipboard or APIs.
-const VERSION = "3.7.1-4692f3940789";
+const VERSION = "3.8.0-b56730bbee-c9826b8022";
 const PREFIX = "medical-calculators::" + self.registration.scope + "::";
 const CACHE = PREFIX + VERSION;
 const SHELL = new URL("index.html", self.registration.scope).href;
-const FILES = ["index.html", "assets/app-4b9ae28dd8.js", "assets/app-898b618b92.css", "assets/avatar-2fc3a937.jpg"]
+const FILES = ["index.html", "assets/app-b56730bbee.js", "assets/geriatrics-c9826b8022.js", "assets/app-898b618b92.css", "assets/avatar-2fc3a937.jpg"]
   .map(path => new URL(path, self.registration.scope).href);
 
 self.addEventListener("install", event => {

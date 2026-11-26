@@ -61,6 +61,8 @@ const document = {
 };
 
 const context = vm.createContext({ document, Intl, Math, Number, String, console });
+const geriatricsSrc = html.match(/src="(assets\/geriatrics[^"?]*\.js)"/)?.[1];
+vm.runInContext(await readFile(new URL(`../${geriatricsSrc}`, import.meta.url), "utf8"), context);
 vm.runInContext(`${definitions}\n;globalThis.__app = {
   state, parseNumber, calculatePrecisedapt, calculateDlcn, calculatePhq9,
   calculateGad7, calculateStopbang, egfrCategory, calculateFrax,
@@ -484,17 +486,18 @@ test("FIB-4: до 35 лет нет ложной зелёной категори�
 });
 
 test("HTML: уникальные id, существующие якоря и локальные ресурсы", async () => {
-  const ids = [...html.matchAll(/\bid="([^"]+)"/g)].map(match => match[1]);
+  const renderedHtml = html + vm.runInContext("Geriatrics.markup()", context);
+  const ids = [...renderedHtml.matchAll(/\bid="([^"]+)"/g)].map(match => match[1]);
   const knownIds = new Set(ids);
   assert.equal(knownIds.size, ids.length);
-  for (const match of html.matchAll(/\b(?:for|data-target)="([^"]+)"/g)) assert.ok(knownIds.has(match[1]), match[1]);
-  for (const match of html.matchAll(/href="#([^"]+)"/g)) assert.ok(knownIds.has(match[1]), match[1]);
+  for (const match of renderedHtml.matchAll(/\b(?:for|data-target)="([^"]+)"/g)) assert.ok(knownIds.has(match[1]), match[1]);
+  for (const match of renderedHtml.matchAll(/href="#([^"]+)"/g)) assert.ok(knownIds.has(match[1]), match[1]);
   for (const match of html.matchAll(/(?:src|href)="(assets\/[^"#]+)"/g)) {
     await readFile(new URL(`../${match[1]}`, import.meta.url));
   }
   for (const match of appScript.matchAll(/getElementById\("([^"]+)"\)/g)) assert.ok(knownIds.has(match[1]), match[1]);
-  assert.equal((html.match(/<form\b/g) || []).length, 31);
-  assert.equal((html.match(/class="calculator"/g) || []).length, 30);
+  assert.equal((renderedHtml.match(/<form\b/g) || []).length, 33);
+  assert.equal((renderedHtml.match(/class="calculator"/g) || []).length, 32);
   assert.ok(!html.includes("data:image"));
 });
 
